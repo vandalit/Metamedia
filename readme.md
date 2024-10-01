@@ -1,0 +1,1 @@
+## el siguiente proyecto esta destinado a ser publicado en proyectos.metamedia.cl
