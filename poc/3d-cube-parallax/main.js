@@ -37,6 +37,7 @@ const MAX_EYE  = 1.8;
 const gyro = {
   active:        false,
   source:        null,    // 'deviceorientation' | 'generic-sensor'
+  sensor:        null,    // RelativeOrientationSensor instance (stored to stop() on deactivate)
   gamma:         null,    // degrees (debug display)
   beta:          null,
   baseGamma:     0,
@@ -141,7 +142,7 @@ function buildLights() {
 
 // ── input: touch (absolute — where finger is = eye direction) ─────────────
 document.addEventListener("touchmove", (e) => {
-  if (gyro.active) return;
+  if (gyro.active || (cam.active && cam.tracking)) return;
   e.preventDefault();
   chip("c-input", "touch", "ok");
   raw.x =  (e.touches[0].clientX / window.innerWidth  - 0.5) * 2;
@@ -149,15 +150,19 @@ document.addEventListener("touchmove", (e) => {
 }, { passive: false });
 
 document.addEventListener("touchend", () => {
-  if (!gyro.active) { raw.x = 0; raw.y = 0; }
+  if (!gyro.active && !(cam.active && cam.tracking)) { raw.x = 0; raw.y = 0; }
 }, { passive: true });
 
 // ── input: mouse ──────────────────────────────────────────────────────────
 document.addEventListener("mousemove", (e) => {
-  if (gyro.active) return;
+  if (gyro.active || (cam.active && cam.tracking)) return;
   chip("c-input", "mouse", "ok");
   raw.x =  (e.clientX / window.innerWidth  - 0.5) * 2;
   raw.y = -(e.clientY / window.innerHeight - 0.5) * 2;
+});
+
+document.addEventListener("mouseleave", () => {
+  if (!gyro.active && !(cam.active && cam.tracking)) { raw.x = 0; raw.y = 0; }
 });
 
 // ── gyro: DeviceOrientationEvent handler ──────────────────────────────────
@@ -201,6 +206,7 @@ async function genericSensorPath() {
     }
 
     const sensor = new RelativeOrientationSensor({ frequency: 60, referenceFrame: "screen" });
+    gyro.sensor = sensor;
 
     sensor.addEventListener("reading", () => {
       if (!gyro.active) return;
@@ -232,6 +238,7 @@ async function genericSensorPath() {
 
 // ── gyro: activation — 3-layer strategy ──────────────────────────────────
 async function activateGyro() {
+  if (gyro.active) { deactivateGyro(); return; }
   const btn = document.getElementById("btn-gyro");
   btn.disabled = true;
   chip("c-gyro", "gyro: conectando…", "");
@@ -287,6 +294,19 @@ function setGyroActive() {
   btn.textContent = "Gyro ON";
   btn.classList.add("ok");
   document.getElementById("btn-cal").disabled = false;
+}
+
+function deactivateGyro() {
+  gyro.active = false;
+  if (gyro.source === "generic-sensor") { gyro.sensor?.stop(); gyro.sensor = null; }
+  gyro.source = null;
+  raw.x = 0; raw.y = 0;
+  chip("c-gyro",  "gyro: off", "");
+  if (!cam.active) chip("c-input", "input: —", "dim");
+  const btn = document.getElementById("btn-gyro");
+  btn.textContent = gyro.receivedEvent ? "Usar giroscopio" : "Giroscopio";
+  btn.classList.remove("ok");
+  document.getElementById("btn-cal").disabled = true;
 }
 
 function calibrate() {
@@ -370,6 +390,7 @@ const HEAD_PITCH_RANGE = 18; // degrees pitch = full parallax
 
 const cam = {
   panelOpen:  false,
+  loading:    false,    // MediaPipe download in progress (guard against concurrent calls)
   active:     false,    // camera stream running
   tracking:   false,    // face currently detected
   video:      null,     // <video> element
@@ -430,6 +451,8 @@ const cam = {
 
 // Lazy-load MediaPipe — only downloads WASM + model when panel is opened
 async function initMediaPipe() {
+  if (cam.loading || cam.landmarker) return;
+  cam.loading = true;
   setCamSt("cargando…", "");
   camStats("descargando modelo (~3 MB)…");
   try {
@@ -451,6 +474,8 @@ async function initMediaPipe() {
     setCamSt("error", "bad");
     camStats("error al cargar MediaPipe");
     showErr("MediaPipe: " + e.message);
+  } finally {
+    cam.loading = false;
   }
 }
 
@@ -482,19 +507,27 @@ async function activateCamera() {
   chip("c-cam", "cam: on", "ok");
   document.getElementById("btn-cam-on").textContent = "Detener";
   document.getElementById("btn-cam-cal").disabled = false;
+  const barBtnOn = document.getElementById("btn-cam-bar");
+  barBtnOn.textContent = "Cam ON";
+  barBtnOn.classList.add("ok");
   camStats("detectando cara…");
 }
 
 function stopCamera() {
   cam.stream?.getTracks().forEach(t => t.stop());
-  cam.video.srcObject = null;
+  if (cam.video) cam.video.srcObject = null;
   cam.active   = false;
   cam.tracking = false;
   cam.ctx?.clearRect(0, 0, 176, 132);
   setCamSt("off", "");
   chip("c-cam", "cam: off", "dim");
+  if (gyro.active) chip("c-input", "gyro", "ok");
+  else chip("c-input", "input: —", "dim");
   document.getElementById("btn-cam-on").textContent = "Activar";
   document.getElementById("btn-cam-cal").disabled = true;
+  const barBtnOff = document.getElementById("btn-cam-bar");
+  barBtnOff.textContent = "Cámara";
+  barBtnOff.classList.remove("ok");
   camStats("—");
 }
 
@@ -509,6 +542,8 @@ function processFrame() {
   if (!results.faceLandmarks?.length) {
     cam.tracking = false;
     camStats("sin cara detectada");
+    if (gyro.active) chip("c-input", "gyro", "ok");
+    else chip("c-input", "input: —", "dim");
     return;
   }
 
@@ -581,6 +616,18 @@ function camStats(text) {
 document.getElementById("btn-cam-on").addEventListener("click", activateCamera);
 document.getElementById("btn-cam-on").disabled = true; // enabled after MediaPipe loads
 document.getElementById("btn-cam-cal").addEventListener("click", calibrateCamera);
+
+// Bottom-bar quick-activate: opens panel + loads model + starts camera in one tap
+async function quickCam() {
+  if (cam.active) { stopCamera(); return; }
+  if (!cam.panelOpen) {
+    cam.panelOpen = true;
+    document.getElementById("cam-panel").classList.add("open");
+  }
+  if (!cam.landmarker && !cam.loading) await initMediaPipe();
+  if (cam.landmarker) activateCamera();
+}
+document.getElementById("btn-cam-bar").addEventListener("click", quickCam);
 
 // ── UI helpers ────────────────────────────────────────────────────────────
 function chip(id, text, cls) {
