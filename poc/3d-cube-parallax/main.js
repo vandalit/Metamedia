@@ -134,7 +134,9 @@ function buildLights() {
   scene.add(new THREE.AmbientLight(0x334466, 2.5));
   const key = new THREE.DirectionalLight(0x8899ff, 3);
   key.position.set(2, 4, 5); scene.add(key);
-  scene.add(Object.assign(new THREE.PointLight(0x4455cc, 2, 10), {position:{x:-3,y:2,z:3}}));
+  const fill = new THREE.PointLight(0x4455cc, 2, 10);
+  fill.position.set(-3, 2, 3);
+  scene.add(fill);
 }
 
 // ── input: touch (absolute — where finger is = eye direction) ─────────────
