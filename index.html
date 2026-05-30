@@ -1,15 +1,72 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>iteraciones</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Metamedia</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #08080f;
+      color: #ccd;
+      font-family: monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 48px;
+    }
+    h1 { font-size: 13px; letter-spacing: 0.3em; opacity: 0.4; text-transform: uppercase; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      width: min(640px, 90vw);
+    }
+    a.card {
+      display: block;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      padding: 20px 24px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    a.card:hover { border-color: rgba(100,140,255,0.5); background: rgba(100,140,255,0.05); }
+    .card-label { font-size: 10px; letter-spacing: 0.2em; opacity: 0.4; margin-bottom: 6px; }
+    .card-title { font-size: 14px; font-weight: bold; }
+    .card-desc { font-size: 11px; opacity: 0.5; margin-top: 4px; line-height: 1.5; }
+    .tag {
+      display: inline-block;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      padding: 2px 7px;
+      border-radius: 3px;
+      margin-top: 10px;
+      background: rgba(100,140,255,0.15);
+      color: #8aabff;
+    }
+    .tag.legacy { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.3); }
+  </style>
 </head>
 <body>
-    <ul>
-        <li><a href="./test-template-2024.10/index.html">Template de Misala, starting point</a></li>
-        <li><a href="./tarjetas-ux-accesibilidad/index.html">tarjetas accesibilidad </a></li>
-        <li><a href="./tres-puntos/plan-basico/index.html">plan marketing</a></li>
-    </ul>
+  <h1>Metamedia — proyectos.metamedia.cl</h1>
+
+  <div class="grid">
+    <a class="card" href="./poc/3d-cube-parallax/index.html">
+      <div class="card-label">POC · FASE 1</div>
+      <div class="card-title">3D Cube Parallax</div>
+      <div class="card-desc">Cubo en habitación 4×4. Parallax off-axis controlado por mouse (próximo: head tracking).</div>
+      <span class="tag">Three.js · activo</span>
+    </a>
+
+    <a class="card" href="./web/index.html">
+      <div class="card-label">LEGACY</div>
+      <div class="card-title">Iteraciones anteriores</div>
+      <div class="card-desc">Templates, tarjetas UX, plan de marketing.</div>
+      <span class="tag legacy">archivo</span>
+    </a>
+  </div>
 </body>
 </html>
