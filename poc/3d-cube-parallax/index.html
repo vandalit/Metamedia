@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Cube Parallax — POC</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: monospace; }
+    canvas { display: block; }
+
+    #ui {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      color: #fff;
+      font-size: 12px;
+      line-height: 1.6;
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    #phase-badge {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      font-size: 11px;
+      padding: 6px 12px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    #hint {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.4);
+      font-size: 12px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <div>offset X: <span id="ox">0.00</span></div>
+    <div>offset Y: <span id="oy">0.00</span></div>
+  </div>
+
+  <div id="phase-badge">FASE 1 — Mouse parallax</div>
+
+  <div id="hint">Mueve el mouse para simular el efecto parallax de head tracking</div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
