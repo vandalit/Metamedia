@@ -305,7 +305,7 @@ async function detectBrave() {
 // ── help overlay ──────────────────────────────────────────────────────────
 const HELP = {
   "brave": {
-    title: "🦁 Brave bloqueó los sensores",
+    title: '<i class="fas fa-shield-halved"></i> Brave bloqueó los sensores',
     steps: [
       "Toca el ícono del León en la barra de direcciones",
       'Busca "Bloquear sensores" y desactívalo para este sitio',
@@ -314,7 +314,7 @@ const HELP = {
     ],
   },
   "ios-denied": {
-    title: "Permiso denegado — iOS",
+    title: '<i class="fas fa-mobile-screen-button"></i> Permiso denegado — iOS',
     steps: [
       "Abre Configuración del iPhone / iPad",
       "Busca el navegador que estás usando (Safari, Chrome…)",
@@ -323,7 +323,7 @@ const HELP = {
     ],
   },
   "generic": {
-    title: "Sensores no disponibles",
+    title: '<i class="fas fa-circle-exclamation"></i> Sensores no disponibles',
     steps: [
       "Tu navegador o configuración bloquea los sensores de movimiento",
       "Prueba abriendo esta página en Chrome para Android",
@@ -334,7 +334,7 @@ const HELP = {
 
 function showHelp(type) {
   const h = HELP[type] || HELP["generic"];
-  document.getElementById("help-title").textContent = h.title;
+  document.getElementById("help-title").innerHTML = h.title;
   const stepsEl = document.getElementById("help-steps");
   stepsEl.innerHTML = h.steps.map((s, i) => `
     <div class="help-step">
@@ -382,12 +382,51 @@ const cam = {
   calibPitch: 0,
 };
 
-// Panel toggle (collapsed bar ↔ expanded panel)
-document.getElementById("cam-header").addEventListener("click", () => {
-  cam.panelOpen = !cam.panelOpen;
-  document.getElementById("cam-panel").classList.toggle("open", cam.panelOpen);
-  if (cam.panelOpen && !cam.landmarker) initMediaPipe();
-});
+// Panel drag + toggle — pointer capture lets drag work on touch and mouse.
+// Movement > 5px = drag (repositions panel); smaller = click (toggle open/closed).
+{
+  const panel  = document.getElementById("cam-panel");
+  const header = document.getElementById("cam-header");
+  let drag = null; // { startX, startY, startLeft, startTop, moved }
+
+  header.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button, #cam-st")) return;
+    const rect = panel.getBoundingClientRect();
+    panel.style.right = "auto";
+    panel.style.left  = rect.left + "px";
+    panel.style.top   = rect.top  + "px";
+    drag = { startX: e.clientX, startY: e.clientY,
+             startLeft: rect.left, startTop: rect.top, moved: false };
+    header.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  header.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.startX, dy = e.clientY - drag.startY;
+    if (!drag.moved && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) drag.moved = true;
+    if (drag.moved) {
+      header.style.cursor = "grabbing";
+      const maxX = window.innerWidth  - panel.offsetWidth;
+      const maxY = window.innerHeight - panel.offsetHeight;
+      panel.style.left = Math.max(0, Math.min(maxX, drag.startLeft + dx)) + "px";
+      panel.style.top  = Math.max(0, Math.min(maxY, drag.startTop  + dy)) + "px";
+    }
+  });
+
+  const endDrag = () => {
+    if (!drag) return;
+    header.style.cursor = "";
+    if (!drag.moved) {
+      cam.panelOpen = !cam.panelOpen;
+      panel.classList.toggle("open", cam.panelOpen);
+      if (cam.panelOpen && !cam.landmarker) initMediaPipe();
+    }
+    drag = null;
+  };
+  header.addEventListener("pointerup",     endDrag);
+  header.addEventListener("pointercancel", endDrag);
+}
 
 // Lazy-load MediaPipe — only downloads WASM + model when panel is opened
 async function initMediaPipe() {

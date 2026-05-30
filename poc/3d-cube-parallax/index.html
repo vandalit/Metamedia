@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
   <title>3D Parallax POC</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { background:#000; overflow:hidden; font-family:monospace; color:#fff; touch-action:none; }
@@ -29,7 +30,7 @@
     .chip.dim { opacity:.3; }
 
     /* ── debug overlay ── */
-    #dbg {
+    #dbg-panel {
       position:fixed; bottom:56px; left:0; right:0;
       display:flex; flex-direction:column; align-items:center;
       gap:4px; pointer-events:none;
@@ -83,7 +84,7 @@
     }
     #cam-header {
       display:flex; align-items:center; gap:6px;
-      padding:6px 10px; cursor:pointer; user-select:none;
+      padding:6px 10px; cursor:grab; user-select:none;
     }
     #cam-header:hover { background:rgba(255,255,255,.05); }
     #cam-icon { font-size:12px; }
@@ -182,7 +183,7 @@
     <span class="chip dim" id="c-cam">cam: off</span>
   </div>
 
-  <div id="dbg">
+  <div id="dbg-panel">
     <div id="xy-box"><div id="xy-dot"></div></div>
     <div id="dbg-vals">x:0.00  y:0.00  γ:—  β:—</div>
   </div>
@@ -198,10 +199,10 @@
   <!-- camera panel — collapsed = bar, open = panel with video + landmarks -->
   <div id="cam-panel">
     <div id="cam-header">
-      <span id="cam-icon">📷</span>
+      <i class="fas fa-camera" id="cam-icon"></i>
       <span id="cam-label">CAM</span>
       <span id="cam-st">off</span>
-      <span id="cam-chevron">▼</span>
+      <i class="fas fa-chevron-down" id="cam-chevron"></i>
     </div>
     <div id="cam-body">
       <div id="cam-view">
