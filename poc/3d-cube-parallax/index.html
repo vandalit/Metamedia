@@ -3,69 +3,95 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-  <title>3D Cube Parallax — POC</title>
+  <title>3D Parallax POC</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { background:#000; overflow:hidden; font-family:monospace; color:#fff; touch-action:none; }
     canvas { display:block; }
 
-    #status {
+    /* ── status bar ── */
+    #bar {
       position:fixed; top:0; left:0; right:0;
-      display:flex; gap:6px; padding:10px 12px;
+      display:flex; align-items:center; gap:6px;
+      padding:8px 10px;
+      background:linear-gradient(rgba(0,0,0,.7), transparent);
       pointer-events:none;
     }
     .chip {
-      font-size:10px; letter-spacing:.07em; padding:3px 8px;
+      font-size:10px; letter-spacing:.05em; padding:2px 7px;
       border-radius:3px;
-      background:rgba(255,255,255,.07);
-      border:1px solid rgba(255,255,255,.1);
+      border:1px solid rgba(255,255,255,.15);
+      background:rgba(255,255,255,.06);
       color:rgba(255,255,255,.4);
     }
-    .chip.on {
-      background:rgba(80,200,120,.12);
-      border-color:rgba(80,200,120,.35);
-      color:#7ee8a2;
+    .chip.ok  { border-color:rgba(80,220,140,.4);  background:rgba(80,220,140,.1);  color:#7eeaaa; }
+    .chip.bad { border-color:rgba(255,140,60,.4);   background:rgba(255,140,60,.1);  color:#ffb06a; }
+
+    /* ── debug overlay ── */
+    #dbg {
+      position:fixed; bottom:56px; left:0; right:0;
+      display:flex; flex-direction:column; align-items:center;
+      gap:4px; pointer-events:none;
     }
-    .chip.warn {
-      background:rgba(255,180,50,.1);
-      border-color:rgba(255,180,50,.3);
-      color:#ffcc66;
+    #dbg-vals {
+      font-size:11px; letter-spacing:.04em; color:rgba(255,255,255,.5);
+      background:rgba(0,0,0,.5); padding:5px 12px; border-radius:4px;
+    }
+    /* XY indicator: a dot inside a small box */
+    #xy-box {
+      width:60px; height:60px;
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:4px; position:relative; background:rgba(0,0,0,.4);
+    }
+    #xy-dot {
+      position:absolute; width:8px; height:8px; border-radius:50%;
+      background:#6af; transform:translate(-50%,-50%);
+      top:50%; left:50%;
+      transition: none;
     }
 
+    /* ── controls ── */
     #controls {
       position:fixed; bottom:0; left:0; right:0;
-      display:flex; gap:8px; padding:12px;
-      background:linear-gradient(transparent, rgba(0,0,0,.6));
+      display:flex; gap:8px; padding:8px;
+      background:rgba(0,0,0,.5);
     }
     button {
-      font-family:monospace; font-size:11px; letter-spacing:.05em;
-      padding:9px 16px; border-radius:5px; cursor:pointer;
-      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff;
+      font-family:monospace; font-size:11px;
+      padding:8px 14px; border-radius:4px; cursor:pointer;
+      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); color:#fff;
     }
-    button.active { background:rgba(80,200,120,.15); border-color:rgba(80,200,120,.4); color:#7ee8a2; }
-    button:disabled { opacity:.28; cursor:default; }
+    button.ok { background:rgba(80,220,140,.12); border-color:rgba(80,220,140,.35); color:#7eeaaa; }
+    button:disabled { opacity:.25; cursor:default; }
 
-    #hint {
-      position:fixed; bottom:54px; left:50%; transform:translateX(-50%);
-      font-size:11px; color:rgba(255,255,255,.28); white-space:nowrap; pointer-events:none;
+    /* ── error display ── */
+    #err {
+      display:none; position:fixed; top:40px; left:10px; right:10px;
+      background:rgba(200,0,0,.85); color:#fff; padding:10px; border-radius:4px;
+      font-size:11px; z-index:999; white-space:pre-wrap; word-break:break-all;
     }
   </style>
 </head>
 <body>
 
-  <div id="status">
-    <span class="chip" id="s-input">mouse</span>
-    <span class="chip" id="s-gyro">gyro: —</span>
-    <span class="chip" id="s-cam">cam: off</span>
+  <div id="bar">
+    <span class="chip" id="c-input">input: —</span>
+    <span class="chip" id="c-gyro">gyro: detectando…</span>
+    <span class="chip" id="c-cam">cam: off</span>
   </div>
 
-  <p id="hint">Mueve el mouse · arrastra · o activa el giroscopio</p>
+  <div id="dbg">
+    <div id="xy-box"><div id="xy-dot"></div></div>
+    <div id="dbg-vals">x:0.00  y:0.00  γ:—  β:—</div>
+  </div>
 
   <div id="controls">
     <button id="btn-gyro">Giroscopio</button>
     <button id="btn-cal" disabled>Calibrar</button>
-    <button disabled title="Fase 2">Cámara (soon)</button>
+    <button disabled>Cámara (soon)</button>
   </div>
+
+  <div id="err"></div>
 
   <script type="module" src="./main.js"></script>
 </body>
