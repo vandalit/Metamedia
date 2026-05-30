@@ -1,58 +1,71 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
   <title>3D Cube Parallax — POC</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; overflow: hidden; font-family: monospace; }
-    canvas { display: block; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#000; overflow:hidden; font-family:monospace; color:#fff; touch-action:none; }
+    canvas { display:block; }
 
-    #ui {
-      position: fixed;
-      top: 16px;
-      left: 16px;
-      color: #fff;
-      font-size: 12px;
-      line-height: 1.6;
-      opacity: 0.7;
-      pointer-events: none;
+    #status {
+      position:fixed; top:0; left:0; right:0;
+      display:flex; gap:6px; padding:10px 12px;
+      pointer-events:none;
+    }
+    .chip {
+      font-size:10px; letter-spacing:.07em; padding:3px 8px;
+      border-radius:3px;
+      background:rgba(255,255,255,.07);
+      border:1px solid rgba(255,255,255,.1);
+      color:rgba(255,255,255,.4);
+    }
+    .chip.on {
+      background:rgba(80,200,120,.12);
+      border-color:rgba(80,200,120,.35);
+      color:#7ee8a2;
+    }
+    .chip.warn {
+      background:rgba(255,180,50,.1);
+      border-color:rgba(255,180,50,.3);
+      color:#ffcc66;
     }
 
-    #phase-badge {
-      position: fixed;
-      top: 16px;
-      right: 16px;
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: #fff;
-      font-size: 11px;
-      padding: 6px 12px;
-      border-radius: 4px;
-      pointer-events: none;
+    #controls {
+      position:fixed; bottom:0; left:0; right:0;
+      display:flex; gap:8px; padding:12px;
+      background:linear-gradient(transparent, rgba(0,0,0,.6));
     }
+    button {
+      font-family:monospace; font-size:11px; letter-spacing:.05em;
+      padding:9px 16px; border-radius:5px; cursor:pointer;
+      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff;
+    }
+    button.active { background:rgba(80,200,120,.15); border-color:rgba(80,200,120,.4); color:#7ee8a2; }
+    button:disabled { opacity:.28; cursor:default; }
 
     #hint {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: rgba(255,255,255,0.4);
-      font-size: 12px;
-      pointer-events: none;
+      position:fixed; bottom:54px; left:50%; transform:translateX(-50%);
+      font-size:11px; color:rgba(255,255,255,.28); white-space:nowrap; pointer-events:none;
     }
   </style>
 </head>
 <body>
-  <div id="ui">
-    <div>offset X: <span id="ox">0.00</span></div>
-    <div>offset Y: <span id="oy">0.00</span></div>
+
+  <div id="status">
+    <span class="chip" id="s-input">mouse</span>
+    <span class="chip" id="s-gyro">gyro: —</span>
+    <span class="chip" id="s-cam">cam: off</span>
   </div>
 
-  <div id="phase-badge">FASE 1 — Mouse parallax</div>
+  <p id="hint">Mueve el mouse · arrastra · o activa el giroscopio</p>
 
-  <div id="hint">Mueve el mouse para simular el efecto parallax de head tracking</div>
+  <div id="controls">
+    <button id="btn-gyro">Giroscopio</button>
+    <button id="btn-cal" disabled>Calibrar</button>
+    <button disabled title="Fase 2">Cámara (soon)</button>
+  </div>
 
   <script type="module" src="./main.js"></script>
 </body>
