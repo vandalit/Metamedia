@@ -26,6 +26,7 @@
     }
     .chip.ok  { border-color:rgba(80,220,140,.4);  background:rgba(80,220,140,.1);  color:#7eeaaa; }
     .chip.bad { border-color:rgba(255,140,60,.4);   background:rgba(255,140,60,.1);  color:#ffb06a; }
+    .chip.dim { opacity:.3; }
 
     /* ── debug overlay ── */
     #dbg {
@@ -37,7 +38,6 @@
       font-size:11px; letter-spacing:.04em; color:rgba(255,255,255,.5);
       background:rgba(0,0,0,.5); padding:5px 12px; border-radius:4px;
     }
-    /* XY indicator: a dot inside a small box */
     #xy-box {
       width:60px; height:60px;
       border:1px solid rgba(255,255,255,.2);
@@ -47,7 +47,6 @@
       position:absolute; width:8px; height:8px; border-radius:50%;
       background:#6af; transform:translate(-50%,-50%);
       top:50%; left:50%;
-      transition: none;
     }
 
     /* ── controls ── */
@@ -67,17 +66,56 @@
     /* ── error display ── */
     #err {
       display:none; position:fixed; top:40px; left:10px; right:10px;
-      background:rgba(200,0,0,.85); color:#fff; padding:10px; border-radius:4px;
+      background:rgba(180,0,0,.9); color:#fff; padding:10px; border-radius:4px;
       font-size:11px; z-index:999; white-space:pre-wrap; word-break:break-all;
     }
+
+    /* ── help overlay ── */
+    #help-overlay {
+      display:none;
+      position:fixed; inset:0; z-index:100;
+      background:rgba(0,0,0,.85);
+      align-items:flex-end; justify-content:center;
+    }
+    #help-overlay.show { display:flex; }
+    #help-card {
+      background:#0f0f1e;
+      border:1px solid rgba(255,255,255,.15);
+      border-radius:12px 12px 0 0;
+      padding:24px 20px;
+      width:100%; max-width:480px;
+      display:flex; flex-direction:column; gap:16px;
+    }
+    #help-card h3 {
+      font-size:14px; color:#ffcc66; letter-spacing:.05em;
+    }
+    #help-steps {
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .help-step {
+      display:flex; gap:10px; align-items:flex-start;
+    }
+    .step-num {
+      min-width:20px; height:20px;
+      background:rgba(255,255,255,.1); border-radius:50%;
+      font-size:10px; display:flex; align-items:center; justify-content:center;
+      margin-top:1px; color:rgba(255,255,255,.6);
+    }
+    .step-text { font-size:12px; color:rgba(255,255,255,.7); line-height:1.5; }
+    #help-actions { display:flex; gap:8px; }
+    #help-retry {
+      flex:1; background:rgba(80,140,255,.15);
+      border-color:rgba(80,140,255,.4); color:#88aaff;
+    }
+    #help-touch { flex:1; }
   </style>
 </head>
 <body>
 
   <div id="bar">
-    <span class="chip" id="c-input">input: —</span>
+    <span class="chip dim" id="c-input">input: —</span>
     <span class="chip" id="c-gyro">gyro: detectando…</span>
-    <span class="chip" id="c-cam">cam: off</span>
+    <span class="chip dim" id="c-cam">cam: off</span>
   </div>
 
   <div id="dbg">
@@ -92,6 +130,18 @@
   </div>
 
   <div id="err"></div>
+
+  <!-- help overlay — content filled by JS based on detected browser/issue -->
+  <div id="help-overlay">
+    <div id="help-card">
+      <h3 id="help-title">—</h3>
+      <div id="help-steps"></div>
+      <div id="help-actions">
+        <button id="help-retry">Reintentar</button>
+        <button id="help-touch">Usar touch</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="./main.js"></script>
 </body>
