@@ -70,6 +70,70 @@
       font-size:11px; z-index:999; white-space:pre-wrap; word-break:break-all;
     }
 
+    /* ── camera panel ── */
+    #cam-panel {
+      position:fixed; top:38px; right:10px; z-index:60;
+      width:176px;
+      border-radius:7px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(8,8,20,.92);
+      backdrop-filter:blur(10px);
+      overflow:hidden;
+      font-family:monospace;
+    }
+    #cam-header {
+      display:flex; align-items:center; gap:6px;
+      padding:6px 10px; cursor:pointer; user-select:none;
+    }
+    #cam-header:hover { background:rgba(255,255,255,.05); }
+    #cam-icon { font-size:12px; }
+    #cam-label { font-size:10px; letter-spacing:.06em; flex:1; color:rgba(255,255,255,.6); }
+    #cam-st {
+      font-size:9px; padding:1px 6px; border-radius:3px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06); color:rgba(255,255,255,.35);
+    }
+    #cam-st.ok  { border-color:rgba(80,220,140,.4); background:rgba(80,220,140,.1); color:#7eeaaa; }
+    #cam-st.bad { border-color:rgba(255,140,60,.4);  background:rgba(255,140,60,.1);  color:#ffb06a; }
+    #cam-chevron { font-size:9px; color:rgba(255,255,255,.3); transition:transform .2s; }
+    #cam-panel.open #cam-chevron { transform:rotate(180deg); }
+
+    #cam-body { display:none; border-top:1px solid rgba(255,255,255,.08); }
+    #cam-panel.open #cam-body { display:block; }
+
+    #cam-view {
+      position:relative; width:176px; height:132px; background:#000;
+      overflow:hidden;
+    }
+    #camv {
+      position:absolute; inset:0; width:100%; height:100%;
+      object-fit:cover;
+      transform:scaleX(-1); /* mirror so user sees selfie view */
+    }
+    #camc {
+      position:absolute; inset:0; width:100%; height:100%;
+      transform:scaleX(-1); /* match video mirror */
+      pointer-events:none;
+    }
+    #cam-loading {
+      position:absolute; inset:0; display:flex;
+      align-items:center; justify-content:center;
+      font-size:10px; color:rgba(255,255,255,.4);
+      background:#000;
+    }
+
+    #cam-stats {
+      padding:4px 8px; font-size:10px;
+      color:rgba(255,255,255,.45); min-height:18px;
+      letter-spacing:.03em;
+    }
+    #cam-btns {
+      display:flex; gap:6px; padding:6px 8px 8px;
+    }
+    #cam-btns button {
+      flex:1; font-size:10px; padding:6px 4px;
+    }
+
     /* ── help overlay ── */
     #help-overlay {
       display:none;
@@ -130,6 +194,28 @@
   </div>
 
   <div id="err"></div>
+
+  <!-- camera panel — collapsed = bar, open = panel with video + landmarks -->
+  <div id="cam-panel">
+    <div id="cam-header">
+      <span id="cam-icon">📷</span>
+      <span id="cam-label">CAM</span>
+      <span id="cam-st">off</span>
+      <span id="cam-chevron">▼</span>
+    </div>
+    <div id="cam-body">
+      <div id="cam-view">
+        <video id="camv" autoplay playsinline muted></video>
+        <canvas id="camc"></canvas>
+        <div id="cam-loading">cargando MediaPipe…</div>
+      </div>
+      <div id="cam-stats">—</div>
+      <div id="cam-btns">
+        <button id="btn-cam-on">Activar</button>
+        <button id="btn-cam-cal" disabled>Calibrar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- help overlay — content filled by JS based on detected browser/issue -->
   <div id="help-overlay">

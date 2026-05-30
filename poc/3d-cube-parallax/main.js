@@ -358,6 +358,191 @@ document.getElementById("help-touch").addEventListener("click", () => {
   chip("c-input", "touch", "ok");
 });
 
+// ── camera module ─────────────────────────────────────────────────────────
+// MediaPipe FaceLandmarker — runs fully in browser via WebAssembly.
+// No native app needed. Lazy-loaded only when user opens the panel.
+
+const MEDIAPIPE_VERSION = "0.10.14";
+const WASM_PATH  = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
+const MODEL_PATH = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const HEAD_YAW_RANGE   = 22; // degrees yaw  = full parallax
+const HEAD_PITCH_RANGE = 18; // degrees pitch = full parallax
+
+const cam = {
+  panelOpen:  false,
+  active:     false,    // camera stream running
+  tracking:   false,    // face currently detected
+  video:      null,     // <video> element
+  canvas:     null,     // overlay <canvas>
+  ctx:        null,     // 2D context
+  stream:     null,     // MediaStream
+  landmarker: null,     // FaceLandmarker instance
+  lastProcess: 0,
+  calibYaw:   0,        // baseline yaw for calibration
+  calibPitch: 0,
+};
+
+// Panel toggle (collapsed bar ↔ expanded panel)
+document.getElementById("cam-header").addEventListener("click", () => {
+  cam.panelOpen = !cam.panelOpen;
+  document.getElementById("cam-panel").classList.toggle("open", cam.panelOpen);
+  if (cam.panelOpen && !cam.landmarker) initMediaPipe();
+});
+
+// Lazy-load MediaPipe — only downloads WASM + model when panel is opened
+async function initMediaPipe() {
+  setCamSt("cargando…", "");
+  camStats("descargando modelo (~3 MB)…");
+  try {
+    const { FaceLandmarker, FilesetResolver } = await import(
+      `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`
+    );
+    const vision = await FilesetResolver.forVisionTasks(WASM_PATH);
+    cam.landmarker = await FaceLandmarker.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: MODEL_PATH, delegate: "GPU" },
+      outputFacialTransformationMatrixes: true,
+      runningMode: "VIDEO",
+      numFaces: 1,
+    });
+    document.getElementById("cam-loading").style.display = "none";
+    setCamSt("listo", "");
+    camStats("presiona Activar para iniciar");
+    document.getElementById("btn-cam-on").disabled = false;
+  } catch (e) {
+    setCamSt("error", "bad");
+    camStats("error al cargar MediaPipe");
+    showErr("MediaPipe: " + e.message);
+  }
+}
+
+async function activateCamera() {
+  if (cam.active) { stopCamera(); return; }
+  setCamSt("permiso…", "");
+  try {
+    cam.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false,
+    });
+  } catch (e) {
+    setCamSt("denegado", "bad");
+    camStats("permiso de cámara denegado");
+    return;
+  }
+
+  cam.video  = document.getElementById("camv");
+  cam.canvas = document.getElementById("camc");
+  cam.ctx    = cam.canvas.getContext("2d");
+  cam.canvas.width  = 176;
+  cam.canvas.height = 132;
+
+  cam.video.srcObject = cam.stream;
+  await cam.video.play();
+
+  cam.active = true;
+  setCamSt("activo", "ok");
+  chip("c-cam", "cam: on", "ok");
+  document.getElementById("btn-cam-on").textContent = "Detener";
+  document.getElementById("btn-cam-cal").disabled = false;
+  camStats("detectando cara…");
+}
+
+function stopCamera() {
+  cam.stream?.getTracks().forEach(t => t.stop());
+  cam.video.srcObject = null;
+  cam.active   = false;
+  cam.tracking = false;
+  cam.ctx?.clearRect(0, 0, 176, 132);
+  setCamSt("off", "");
+  chip("c-cam", "cam: off", "dim");
+  document.getElementById("btn-cam-on").textContent = "Activar";
+  document.getElementById("btn-cam-cal").disabled = true;
+  camStats("—");
+}
+
+// Called every frame when camera is active (~30fps cap)
+function processFrame() {
+  if (!cam.video || cam.video.readyState < 2 || !cam.landmarker) return;
+
+  const now = performance.now();
+  const results = cam.landmarker.detectForVideo(cam.video, now);
+  cam.ctx.clearRect(0, 0, 176, 132);
+
+  if (!results.faceLandmarks?.length) {
+    cam.tracking = false;
+    camStats("sin cara detectada");
+    return;
+  }
+
+  const landmarks = results.faceLandmarks[0];
+  drawLandmarks(landmarks);
+
+  // Head pose via facial transformation matrix (yaw/pitch without calibration step)
+  const mData = results.facialTransformationMatrixes?.[0]?.data;
+  if (mData) {
+    // Column-major 4×4: m[8]=R02, m[9]=R12, m[10]=R22 → ZYX euler
+    const rawYaw   = Math.atan2(mData[8], mData[10]) * 180 / Math.PI;
+    const rawPitch = Math.asin(-Math.max(-1, Math.min(1, mData[9]))) * 180 / Math.PI;
+
+    const yaw   = rawYaw   - cam.calibYaw;
+    const pitch = rawPitch - cam.calibPitch;
+
+    // Camera overrides gyro/touch when tracking
+    raw.x = clamp(-yaw   / HEAD_YAW_RANGE,   -1, 1);
+    raw.y = clamp( pitch / HEAD_PITCH_RANGE,  -1, 1);
+
+    cam.tracking = true;
+    camStats(`yaw:${yaw.toFixed(1)}° pitch:${pitch.toFixed(1)}°`);
+    chip("c-input", "face", "ok");
+  } else {
+    // Fallback: nose tip relative position
+    const nose = landmarks[1];
+    raw.x = clamp(-(nose.x - 0.5) / 0.15, -1, 1);
+    raw.y = clamp(-(nose.y - 0.5) / 0.12, -1, 1);
+    cam.tracking = true;
+    camStats(`nose x:${nose.x.toFixed(2)} y:${nose.y.toFixed(2)}`);
+  }
+}
+
+function drawLandmarks(lm) {
+  const ctx = cam.ctx;
+  const W = 176, H = 132;
+  // Sparse dots (every 25th landmark)
+  ctx.fillStyle = "rgba(80,200,140,0.55)";
+  for (let i = 0; i < lm.length; i += 25) {
+    ctx.beginPath();
+    ctx.arc(lm[i].x * W, lm[i].y * H, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Highlighted nose tip
+  ctx.fillStyle = "#ff4466";
+  ctx.beginPath();
+  ctx.arc(lm[1].x * W, lm[1].y * H, 4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function calibrateCamera() {
+  if (!cam.landmarker || !cam.video || cam.video.readyState < 2) return;
+  const results = cam.landmarker.detectForVideo(cam.video, performance.now());
+  if (!results.facialTransformationMatrixes?.length) return;
+  const mData = results.facialTransformationMatrixes[0].data;
+  cam.calibYaw   = Math.atan2(mData[8], mData[10]) * 180 / Math.PI;
+  cam.calibPitch = Math.asin(-Math.max(-1, Math.min(1, mData[9]))) * 180 / Math.PI;
+  raw.x = 0; raw.y = 0; smoothed.x = 0; smoothed.y = 0;
+}
+
+function setCamSt(text, cls) {
+  const el = document.getElementById("cam-st");
+  el.textContent = text;
+  el.className   = cls;
+}
+function camStats(text) {
+  document.getElementById("cam-stats").textContent = text;
+}
+
+document.getElementById("btn-cam-on").addEventListener("click", activateCamera);
+document.getElementById("btn-cam-on").disabled = true; // enabled after MediaPipe loads
+document.getElementById("btn-cam-cal").addEventListener("click", calibrateCamera);
+
 // ── UI helpers ────────────────────────────────────────────────────────────
 function chip(id, text, cls) {
   const el = document.getElementById(id);
@@ -423,6 +608,14 @@ function animate() {
 
   smoothed.x += (raw.x - smoothed.x) * LERP;
   smoothed.y += (raw.y - smoothed.y) * LERP;
+
+  if (cam.active) {
+    const now = performance.now();
+    if (now - cam.lastProcess > 33) { // ~30fps cap
+      processFrame();
+      cam.lastProcess = now;
+    }
+  }
 
   applyOffAxis();
   updateDebug();
