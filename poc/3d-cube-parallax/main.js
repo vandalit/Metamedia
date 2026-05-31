@@ -78,6 +78,7 @@ scene.add(sceneGroup);
 let sceneLights    = [];
 let sceneAnimFn    = null;
 let sceneTextures  = []; // textures to dispose on scene switch (materials.dispose() skips textures)
+let sceneDiagObjs  = []; // objects shown in SPACE diagram — set by each activateScene*
 let activeSceneIdx = 0;
 
 function clearScene() {
@@ -274,6 +275,15 @@ function activateScene1() {
     vFar.rotation.x   = t * 0.3;
   };
 
+  const W = VP.halfW;
+  sceneDiagObjs = [
+    { x: -W * 0.4,  z: 2.5,  r: 4.5, color: "rgba(255,138,98,0.88)"  },
+    { x:  W * 0.4,  z: 1.0,  r: 3.5, color: "rgba(178,138,255,0.88)" },
+    { x:  0,        z: 0.4,  r: 5,   color: "rgba(128,158,255,0.88)" },
+    { x: -W * 0.3,  z: -1.5, r: 3.5, color: "rgba(118,218,158,0.88)" },
+    { x:  W * 0.25, z: -1.9, r: 3,   color: "rgba(138,198,255,0.88)" },
+  ];
+
   updateScenePanel();
 }
 
@@ -365,6 +375,15 @@ function activateScene2() {
     vFar.rotation.y   = t * 0.55;
   };
 
+  const W2 = VP.halfW;
+  sceneDiagObjs = [
+    { x: -W2 * 0.4,  z: 2.5,  r: 4.5, color: "rgba(255,100,80,0.85)"  },
+    { x:  W2 * 0.4,  z: 1.0,  r: 3.5, color: "rgba(160,80,220,0.85)"  },
+    { x:  0,         z: 0.4,  r: 5,   color: "rgba(60,110,255,0.85)"  },
+    { x: -W2 * 0.3,  z: -1.5, r: 3.5, color: "rgba(30,200,100,0.85)"  },
+    { x:  W2 * 0.25, z: -1.9, r: 3,   color: "rgba(100,180,255,0.85)" },
+  ];
+
   updateScenePanel();
 }
 
@@ -374,94 +393,167 @@ function activateScene3() {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   activeSceneIdx = 2;
 
-  const { halfW, halfH } = VP;
-  const floorY = -halfH * 0.72; // ground level
-
-  // 3-step toon gradient: shadow / midtone / highlight
-  const gradData = new Uint8Array([88, 158, 232]);
+  // Toon gradient: 3 hard tonal steps (NearestFilter = no interpolation)
+  const gradData = new Uint8Array([82, 152, 228]);
   const gradMap  = new THREE.DataTexture(gradData, 3, 1, THREE.RedFormat);
-  gradMap.minFilter = THREE.NearestFilter; // hard steps, no interpolation
+  gradMap.minFilter = THREE.NearestFilter;
   gradMap.magFilter = THREE.NearestFilter;
   gradMap.needsUpdate = true;
   sceneTextures.push(gradMap);
 
-  // Lights
-  const amb = new THREE.AmbientLight(0x0c1018, 1.8);
+  // Lights — overhead sun casts building shadows on ground (visible in drone view)
+  const amb = new THREE.AmbientLight(0x0e1424, 2.8);
   scene.add(amb); sceneLights.push(amb);
-
-  const sun = new THREE.DirectionalLight(0xfff0cc, 5.5);
-  sun.position.set(4, 7, 3);
+  const sun = new THREE.DirectionalLight(0xfff4dd, 5.2);
+  sun.position.set(3, 8, 2);
   sun.castShadow = true;
-  sun.shadow.camera.near   = 0.5;
-  sun.shadow.camera.far    = 16;
-  sun.shadow.camera.left   = -6;
-  sun.shadow.camera.right  =  6;
-  sun.shadow.camera.top    =  6;
-  sun.shadow.camera.bottom = -6;
+  sun.shadow.camera.near   = 0.1;
+  sun.shadow.camera.far    = 30;
+  sun.shadow.camera.left   = -8; sun.shadow.camera.right  = 8;
+  sun.shadow.camera.top    =  8; sun.shadow.camera.bottom = -8;
   sun.shadow.mapSize.set(1024, 1024);
-  sun.shadow.radius = 3;
+  sun.shadow.radius = 2;
   scene.add(sun); sceneLights.push(sun);
 
-  // Building helper — toon mesh + back-face outline in a group
-  function building(x, z, w, h, d, color, emissive = 0x000000) {
-    const geo  = new THREE.BoxGeometry(w, h, d);
-    const mat  = new THREE.MeshToonMaterial({
-      color, gradientMap: gradMap,
-      emissive, emissiveIntensity: 0.35,
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+  // City group tilted for drone / bird's-eye view
+  // rotation.x = -60° → local +Y (building height) projects into world -Z (depth);
+  // local +Z (city depth) projects into world +Y (screen up).
+  const cityGroup = new THREE.Group();
+  cityGroup.rotation.x = -Math.PI / 3; // -60°
+  sceneGroup.add(cityGroup);
 
-    // Outline: scaled-up back-face clone (separate geo to avoid double-dispose issues)
-    const outline = new THREE.Mesh(
-      new THREE.BoxGeometry(w, h, d),
-      new THREE.MeshBasicMaterial({ color: 0x050810, side: THREE.BackSide })
-    );
-    outline.scale.setScalar(1.045);
+  // Deterministic hash — same seed = same city every time
+  const hash = (n) => Math.abs(Math.sin(n * 127.1 + 311.7) * 43758.5453) % 1;
 
-    const g = new THREE.Group();
-    g.add(mesh, outline);
-    g.position.set(x, floorY + h / 2, z);
-    return g;
+  // Grid parameters
+  const COLS = 9, ROWS = 13;
+  const BLOCK = 0.36, STREET = 0.10, AVENUE = 0.22, AVE_EVERY = 3;
+
+  // Precompute centred axis positions with variable street/avenue gaps
+  function axisPos(count) {
+    const pos = []; let cur = 0;
+    for (let i = 0; i < count; i++) {
+      pos.push(cur + BLOCK / 2);
+      cur += BLOCK;
+      if (i < count - 1) cur += (i + 1) % AVE_EVERY === 0 ? AVENUE : STREET;
+    }
+    const total = cur;
+    return { pos: pos.map(p => p - total / 2), total };
   }
+  const ax = axisPos(COLS);
+  const az = axisPos(ROWS);
 
-  // Ground plane (shadow receiver, toon)
+  // Ground — dark asphalt, receives building shadows
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(halfW * 5, DEPTH_SPAN * 3),
-    new THREE.MeshToonMaterial({ color: 0x0a0c1a, gradientMap: gradMap })
+    new THREE.PlaneGeometry(ax.total + 0.5, az.total + 0.5),
+    new THREE.MeshToonMaterial({ color: 0x0e0f1a, gradientMap: gradMap })
   );
   ground.rotation.x = -Math.PI / 2;
-  ground.position.set(0, floorY, (DEPTH_NEAR + DEPTH_FAR) / 2);
   ground.receiveShadow = true;
-  sceneGroup.add(ground);
+  cityGroup.add(ground);
 
-  const W = halfW, H = halfH;
+  // Street grid overlay (slightly elevated XZ plane, thin lines via LineSegments)
+  {
+    const pts = [];
+    for (const x of ax.pos) {
+      pts.push(new THREE.Vector3(x - BLOCK / 2, 0.003, -az.total / 2));
+      pts.push(new THREE.Vector3(x - BLOCK / 2, 0.003,  az.total / 2));
+    }
+    pts.push(new THREE.Vector3(ax.total / 2, 0.003, -az.total / 2));
+    pts.push(new THREE.Vector3(ax.total / 2, 0.003,  az.total / 2));
+    for (const z of az.pos) {
+      pts.push(new THREE.Vector3(-ax.total / 2, 0.003, z - BLOCK / 2));
+      pts.push(new THREE.Vector3( ax.total / 2, 0.003, z - BLOCK / 2));
+    }
+    pts.push(new THREE.Vector3(-ax.total / 2, 0.003,  az.total / 2));
+    pts.push(new THREE.Vector3( ax.total / 2, 0.003,  az.total / 2));
+    cityGroup.add(new THREE.LineSegments(
+      new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({ color: 0x1a1e2e, transparent: true, opacity: 0.7 })
+    ));
+  }
 
-  // ── Row 1: foreground z=+2.2, warm tones ─────────────────────────────────
-  sceneGroup.add(building(-W * 0.70, 2.2, W * 0.38, H * 1.10, 0.30, 0xc4882a, 0x664422));
-  sceneGroup.add(building(-W * 0.22, 2.2, W * 0.30, H * 0.72, 0.28, 0xb55a3a, 0x552211));
-  sceneGroup.add(building( W * 0.28, 2.2, W * 0.46, H * 1.55, 0.32, 0xd4a040, 0x665522));
-  sceneGroup.add(building( W * 0.78, 2.2, W * 0.32, H * 0.95, 0.28, 0xe8c870, 0x665533));
+  // Building placement
+  for (let col = 0; col < COLS; col++) {
+    for (let row = 0; row < ROWS; row++) {
+      // Normalised distance from city centre (0 = CBD, 1 = corner)
+      const cx = (col / (COLS - 1)) * 2 - 1;
+      const cz = (row / (ROWS - 1)) * 2 - 1;
+      const dist = Math.min(Math.sqrt(cx * cx + cz * cz) / Math.SQRT2, 1);
 
-  // ── Row 2: near z=+0.8, steel blue ───────────────────────────────────────
-  sceneGroup.add(building(-W * 0.78, 0.8, W * 0.38, H * 0.80, 0.35, 0x445566, 0x223355));
-  sceneGroup.add(building(-W * 0.28, 0.8, W * 0.52, H * 1.28, 0.38, 0x334488, 0x1a2266));
-  sceneGroup.add(building( W * 0.28, 0.8, W * 0.36, H * 0.65, 0.35, 0x556677, 0x334455));
-  sceneGroup.add(building( W * 0.78, 0.8, W * 0.38, H * 1.02, 0.35, 0x3d5068, 0x223355));
+      const h0 = hash(col * 31 + row * 17 + 5);
+      const h1 = hash(col * 53 + row * 7  + 11);
+      const h2 = hash(col * 97 + row * 23 + 3);
 
-  // ── Row 3: back z=-1.3, dark navy ────────────────────────────────────────
-  sceneGroup.add(building(-W * 0.80, -1.3, W * 0.46, H * 0.75, 0.45, 0x1e2d50, 0x181f38));
-  sceneGroup.add(building(-W * 0.25, -1.3, W * 0.60, H * 1.10, 0.48, 0x223366, 0x1a2550));
-  sceneGroup.add(building( W * 0.35, -1.3, W * 0.40, H * 0.60, 0.45, 0x1a2a48, 0x151e35));
-  sceneGroup.add(building( W * 0.82, -1.3, W * 0.44, H * 0.88, 0.45, 0x1e3060, 0x192548));
+      // Occasional vacant lot or park — more frequent on outskirts
+      if (h2 < (dist > 0.55 ? 0.18 : 0.04)) continue;
 
-  // ── Row 4: far silhouette z=-2.1, near-black ─────────────────────────────
-  sceneGroup.add(building(-W * 0.75, -2.1, W * 0.75, H * 0.44, 0.50, 0x0e1428));
-  sceneGroup.add(building( W * 0.05, -2.1, W * 0.90, H * 0.65, 0.52, 0x101830));
-  sceneGroup.add(building( W * 0.85, -2.1, W * 0.60, H * 0.52, 0.50, 0x0d1526));
+      // Height by zone — capped so building tops stay within camera far plane
+      // (with -60° tilt, max h where world_z = h * sin(60°) ≤ 2.5 → h ≤ 2.89)
+      let height;
+      if (dist < 0.14)       height = 2.0 + h0 * 0.85;   // CBD skyscraper: 2.0–2.85
+      else if (dist < 0.28)  height = 1.0 + h0 * 1.0;    // high-rise commercial: 1.0–2.0
+      else if (dist < 0.45)  height = 0.5 + h0 * 0.7;    // mixed-use: 0.5–1.2
+      else if (dist < 0.65)  height = 0.22 + h0 * 0.45;  // residential: 0.22–0.67
+      else                   height = 0.12 + h0 * 0.25;  // low / outskirts: 0.12–0.37
 
-  sceneAnimFn = null; // static city — parallax alone drives the depth experience
+      // Sporadic tall outlier in commercial ring (landmark buildings)
+      if (dist > 0.22 && dist < 0.38 && h1 > 0.90) height = Math.min(height * 2.2, 2.8);
+
+      // Colour by zone (HSL)
+      let color, emissive;
+      if (dist < 0.15) {
+        color    = new THREE.Color().setHSL(0.60, 0.40, 0.35 + h0 * 0.15); // blue glass
+        emissive = new THREE.Color().setHSL(0.62, 0.55, 0.04 + h1 * 0.05);
+      } else if (dist < 0.30) {
+        color    = new THREE.Color().setHSL(0.57, 0.25, 0.40 + h0 * 0.14);
+        emissive = new THREE.Color().setHSL(0.60, 0.40, 0.03 + h1 * 0.04);
+      } else if (dist < 0.50) {
+        color    = new THREE.Color().setHSL(0.09, 0.22, 0.44 + h0 * 0.14); // warm concrete
+        emissive = new THREE.Color().setHSL(0.10, 0.30, 0.02 + h1 * 0.03);
+      } else {
+        color    = new THREE.Color().setHSL(0.07, 0.15, 0.40 + h0 * 0.12); // beige/brick
+        emissive = new THREE.Color().setHSL(0.08, 0.20, 0.01 + h1 * 0.02);
+      }
+
+      const bw  = BLOCK * 0.86;
+      const geo = new THREE.BoxGeometry(bw, height, bw);
+      const mat = new THREE.MeshToonMaterial({ color, gradientMap: gradMap, emissive, emissiveIntensity: 0.35 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(ax.pos[col], height / 2, az.pos[row]);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+
+      // Back-face ink outline (skip tiny residential — performance + readability)
+      if (height > 0.28) {
+        const outline = new THREE.Mesh(
+          new THREE.BoxGeometry(bw, height, bw),
+          new THREE.MeshBasicMaterial({ color: 0x03050c, side: THREE.BackSide })
+        );
+        outline.scale.setScalar(1.06);
+        mesh.add(outline);
+      }
+
+      cityGroup.add(mesh);
+    }
+  }
+
+  // Diagram representation: sample world-Z of building tops across the city
+  // With -60° tilt: world_z = local_z * cos60 - local_y * sin60 = lz*0.5 - h*0.866
+  const W3 = VP.halfW;
+  sceneDiagObjs = [
+    { x: -W3 * 0.55, z:  1.2, r: 2, color: "rgba(175,158,132,0.65)" }, // near, low
+    { x:  W3 * 0.40, z:  0.9, r: 2, color: "rgba(175,158,132,0.65)" },
+    { x: -W3 * 0.25, z:  0.3, r: 2.5, color: "rgba(130,155,185,0.72)" }, // mid commercial
+    { x:  W3 * 0.50, z:  0.1, r: 2.5, color: "rgba(130,155,185,0.72)" },
+    { x:  W3 * 0.15, z: -0.8, r: 3.5, color: "rgba(100,130,220,0.82)" }, // CBD tops
+    { x: -W3 * 0.05, z: -1.4, r: 4,   color: "rgba(100,130,220,0.85)" },
+    { x:  W3 * 0.10, z: -2.0, r: 3.5, color: "rgba(110,140,230,0.80)" },
+    { x: -W3 * 0.30, z: -1.2, r: 2.5, color: "rgba(115,135,175,0.65)" }, // far residential
+    { x:  W3 * 0.45, z: -0.9, r: 2,   color: "rgba(115,135,175,0.65)" },
+  ];
+
+  sceneAnimFn = null; // static — head movement IS the motion
 
   updateScenePanel();
 }
@@ -1099,15 +1191,8 @@ function drawDiagram() {
   ctx.fillText(`z=${DEPTH_FAR}`,   backX - 28,   DIAG_H - 3);
   ctx.fillText(`z=+${DEPTH_NEAR}`, nearX + 2,    DIAG_H - 3);
 
-  // Scene objects at their (z, x) world positions
-  const sceneObjs = [
-    { x: -halfW * 0.4,  z: 2.5,  r: 4.5, color: "rgba(255,138,98,0.88)"  },
-    { x:  halfW * 0.4,  z: 1.0,  r: 3.5, color: "rgba(178,138,255,0.88)" },
-    { x:  0,            z: 0.4,  r: 5,   color: "rgba(128,158,255,0.88)" },
-    { x: -halfW * 0.3,  z: -1.5, r: 3.5, color: "rgba(118,218,158,0.88)" },
-    { x:  halfW * 0.25, z: -1.9, r: 3,   color: "rgba(138,198,255,0.88)" },
-  ];
-  for (const o of sceneObjs) {
+  // Scene objects — registered by each activateScene*
+  for (const o of sceneDiagObjs) {
     ctx.fillStyle = o.color;
     ctx.beginPath();
     ctx.arc(wd(o.z), wl(o.x), o.r, 0, Math.PI * 2);
