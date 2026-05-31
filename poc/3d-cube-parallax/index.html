@@ -135,6 +135,43 @@
       flex:1; font-size:10px; padding:6px 4px;
     }
 
+    /* ── diagram / spatial panel ── */
+    #diag-panel {
+      position:fixed; top:38px; left:10px; z-index:60;
+      width:244px;
+      border-radius:7px;
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(10,10,20,.95);
+      backdrop-filter:blur(12px);
+      overflow:hidden;
+      font-family:monospace;
+    }
+    #diag-header {
+      display:flex; align-items:center; gap:6px;
+      padding:6px 10px; cursor:grab; user-select:none;
+    }
+    #diag-header:hover { background:rgba(255,255,255,.04); }
+    #diag-icon  { font-size:11px; color:rgba(170,180,220,.7); }
+    #diag-label { font-size:10px; letter-spacing:.06em; flex:1; color:rgba(170,180,220,.6); }
+    #diag-st {
+      font-size:9px; padding:1px 6px; border-radius:3px;
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.05); color:rgba(255,255,255,.3);
+    }
+    #diag-st.live { border-color:rgba(130,160,255,.4); background:rgba(130,160,255,.08); color:#aabeff; }
+    #diag-chevron { font-size:9px; color:rgba(255,255,255,.25); transition:transform .2s; }
+    #diag-panel.open #diag-chevron { transform:rotate(180deg); }
+
+    #diag-body { display:none; border-top:1px solid rgba(255,255,255,.07); }
+    #diag-panel.open #diag-body { display:block; }
+
+    #diagc { display:block; background:#0c0c17; }
+    #diag-stats {
+      padding:4px 8px 6px; font-size:9px; letter-spacing:.03em;
+      color:rgba(160,170,210,.5); min-height:16px;
+      border-top:1px solid rgba(255,255,255,.05);
+    }
+
     /* ── help overlay ── */
     #help-overlay {
       display:none;
@@ -215,6 +252,20 @@
         <button id="btn-cam-on">Activar</button>
         <button id="btn-cam-cal" disabled>Calibrar</button>
       </div>
+    </div>
+  </div>
+
+  <!-- spatial diagram panel — top-down view of the 3D space -->
+  <div id="diag-panel">
+    <div id="diag-header">
+      <i class="fas fa-vector-square" id="diag-icon"></i>
+      <span id="diag-label">SPACE</span>
+      <span id="diag-st">off</span>
+      <i class="fas fa-chevron-down" id="diag-chevron"></i>
+    </div>
+    <div id="diag-body">
+      <canvas id="diagc" width="244" height="194"></canvas>
+      <div id="diag-stats">—</div>
     </div>
   </div>
 
