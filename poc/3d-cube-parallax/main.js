@@ -70,6 +70,29 @@ function computeViewport() {
 let VP        = computeViewport();
 let roomGroup = null; // stored for dispose + rebuild on resize
 
+// ── scene management ──────────────────────────────────────────────────────
+// sceneGroup holds all scene-specific objects; clearScene() disposes them.
+// Room geometry and the camera config survive scene switches.
+const sceneGroup = new THREE.Group();
+scene.add(sceneGroup);
+let sceneLights    = [];
+let sceneAnimFn    = null;
+let activeSceneIdx = 0;
+
+function clearScene() {
+  sceneGroup.traverse(child => {
+    child.geometry?.dispose();
+    if (child.material) {
+      (Array.isArray(child.material) ? child.material : [child.material])
+        .forEach(m => m.dispose());
+    }
+  });
+  sceneGroup.clear();
+  sceneLights.forEach(l => scene.remove(l));
+  sceneLights = [];
+  sceneAnimFn = null;
+}
+
 // ── off-axis projection ───────────────────────────────────────────────────
 // Virtual screen at z=0. Frustum bounds keep screen edges fixed in world
 // space regardless of eye position → "window into a 3D world" illusion.
@@ -204,37 +227,142 @@ function wireObj(geo, faceColor, wireColor) {
   return g;
 }
 
-function buildObjects() {
-  // Positions expressed as fractions of half-room dimensions so they
-  // stay proportional across portrait/landscape/any device viewport.
-  const { halfW, halfH } = VP;
-  const s = halfH * 0.1; // size unit = 10% of half-height
+function activateScene1() {
+  clearScene();
+  renderer.shadowMap.enabled = false;
+  activeSceneIdx = 0;
 
-  const vClose = wireObj(new THREE.OctahedronGeometry(s * 0.85), 0xdd3300, 0xff6644);
-  vClose.position.set(-halfW * 0.4,  halfH * 0.10,  2.5); scene.add(vClose); // z=+2.5 → moves most
-
-  const close = wireObj(new THREE.BoxGeometry(s, s, s), 0x8833cc, 0xbb66ff);
-  close.position.set( halfW * 0.4, -halfH * 0.15,  1.0); scene.add(close);   // z=+1.0
-
-  const center = wireObj(new THREE.BoxGeometry(s * 2.2, s * 2.2, s * 2.2), 0x2244cc, 0x5577ff);
-  center.position.set(0, 0, 0.4); scene.add(center);                          // z=+0.4 → slight foreground parallax
-
-  const far = wireObj(new THREE.TetrahedronGeometry(s * 0.85), 0x22aa55, 0x55ff88);
-  far.position.set(-halfW * 0.3,  halfH * 0.20, -1.5); scene.add(far);       // z=-1.5
-
-  const vFar = wireObj(new THREE.IcosahedronGeometry(s * 0.6), 0x55aaff, 0x88ccff);
-  vFar.position.set( halfW * 0.25, -halfH * 0.10, -1.9); scene.add(vFar);    // z=-1.9 → moves least
-
-  return { vClose, close, center, far, vFar };
-}
-
-function buildLights() {
-  scene.add(new THREE.AmbientLight(0x334466, 2.5));
+  // Lights
+  const amb = new THREE.AmbientLight(0x334466, 2.5);
+  scene.add(amb); sceneLights.push(amb);
   const key = new THREE.DirectionalLight(0x8899ff, 3);
-  key.position.set(2, 4, 5); scene.add(key);
+  key.position.set(2, 4, 5);
+  scene.add(key); sceneLights.push(key);
   const fill = new THREE.PointLight(0x4455cc, 2, 10);
   fill.position.set(-3, 2, 3);
-  scene.add(fill);
+  scene.add(fill); sceneLights.push(fill);
+
+  // Objects (fractions of half-room so they scale with any viewport)
+  const { halfW, halfH } = VP;
+  const s = halfH * 0.1;
+
+  const vClose = wireObj(new THREE.OctahedronGeometry(s * 0.85), 0xdd3300, 0xff6644);
+  vClose.position.set(-halfW * 0.4,  halfH * 0.10,  2.5); sceneGroup.add(vClose);
+
+  const close = wireObj(new THREE.BoxGeometry(s, s, s), 0x8833cc, 0xbb66ff);
+  close.position.set( halfW * 0.4, -halfH * 0.15,  1.0); sceneGroup.add(close);
+
+  const center = wireObj(new THREE.BoxGeometry(s * 2.2, s * 2.2, s * 2.2), 0x2244cc, 0x5577ff);
+  center.position.set(0, 0, 0.4); sceneGroup.add(center);
+
+  const far = wireObj(new THREE.TetrahedronGeometry(s * 0.85), 0x22aa55, 0x55ff88);
+  far.position.set(-halfW * 0.3,  halfH * 0.20, -1.5); sceneGroup.add(far);
+
+  const vFar = wireObj(new THREE.IcosahedronGeometry(s * 0.6), 0x55aaff, 0x88ccff);
+  vFar.position.set( halfW * 0.25, -halfH * 0.10, -1.9); sceneGroup.add(vFar);
+
+  sceneAnimFn = (t) => {
+    center.rotation.y = t * 0.35;
+    center.rotation.x = Math.sin(t * 0.22) * 0.1;
+    vClose.rotation.y = t * 0.9;
+    vClose.rotation.z = t * 0.5;
+    close.rotation.x  = t * 0.6;
+    far.rotation.y    = t * 0.4;
+    vFar.rotation.x   = t * 0.3;
+  };
+
+  updateScenePanel();
+}
+
+function activateScene2() {
+  clearScene();
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  activeSceneIdx = 1;
+
+  const { halfW, halfH } = VP;
+  const s = halfH * 0.1;
+
+  // Key light with soft shadows
+  const amb = new THREE.AmbientLight(0x18182a, 1.2);
+  scene.add(amb); sceneLights.push(amb);
+
+  const sun = new THREE.DirectionalLight(0xffeedd, 5);
+  sun.position.set(3, 5, 4);
+  sun.castShadow = true;
+  sun.shadow.camera.near   = 0.5;
+  sun.shadow.camera.far    = 16;
+  sun.shadow.camera.left   = -5;
+  sun.shadow.camera.right  =  5;
+  sun.shadow.camera.top    =  5;
+  sun.shadow.camera.bottom = -5;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.radius = 5;
+  scene.add(sun); sceneLights.push(sun);
+
+  const rim = new THREE.DirectionalLight(0x2244bb, 1.4);
+  rim.position.set(-3, -1, -4);
+  scene.add(rim); sceneLights.push(rim);
+
+  const accent = new THREE.PointLight(0x6644ff, 1.8, 6);
+  accent.position.set(-1.5, 0.5, 1.5);
+  scene.add(accent); sceneLights.push(accent);
+
+  function solidObj(geo, color, roughness = 0.45, metalness = 0.4) {
+    const m = new THREE.Mesh(geo,
+      new THREE.MeshStandardMaterial({ color, roughness, metalness }));
+    m.castShadow = true;
+    m.receiveShadow = true;
+    return m;
+  }
+
+  // z=+2.5 — sphere (most parallax)
+  const vClose = solidObj(new THREE.SphereGeometry(s * 0.72, 32, 32), 0xff4422, 0.55, 0.2);
+  vClose.position.set(-halfW * 0.4, halfH * 0.10, 2.5);
+  sceneGroup.add(vClose);
+
+  // z=+1.0 — hexagonal prism
+  const close = solidObj(new THREE.CylinderGeometry(s * 0.42, s * 0.52, s * 1.4, 6), 0x9933cc, 0.35, 0.55);
+  close.position.set(halfW * 0.4, -halfH * 0.15, 1.0);
+  sceneGroup.add(close);
+
+  // z=+0.4 — torus knot (center, most visible)
+  const center = solidObj(new THREE.TorusKnotGeometry(s * 0.88, s * 0.22, 120, 16), 0x3366ff, 0.18, 0.85);
+  center.position.set(0, 0, 0.4);
+  sceneGroup.add(center);
+
+  // z=-1.5 — icosahedron
+  const far = solidObj(new THREE.IcosahedronGeometry(s * 0.78, 0), 0x22cc66, 0.65, 0.15);
+  far.position.set(-halfW * 0.3, halfH * 0.20, -1.5);
+  sceneGroup.add(far);
+
+  // z=-1.9 — cone (least parallax)
+  const vFar = solidObj(new THREE.ConeGeometry(s * 0.48, s * 1.2, 8), 0x66aaff, 0.50, 0.30);
+  vFar.position.set(halfW * 0.25, -halfH * 0.10, -1.9);
+  sceneGroup.add(vFar);
+
+  // Shadow-receiving floor plane
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(halfW * 4, DEPTH_SPAN * 2.5),
+    new THREE.MeshStandardMaterial({ color: 0x0b0b1c, roughness: 0.98, metalness: 0 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, -halfH * 0.92, (DEPTH_NEAR + DEPTH_FAR) / 2);
+  floor.receiveShadow = true;
+  sceneGroup.add(floor);
+
+  sceneAnimFn = (t) => {
+    center.rotation.y = t * 0.28;
+    center.rotation.x = t * 0.12;
+    vClose.rotation.y = t * 0.65;
+    close.rotation.y  = t * 0.50;
+    close.rotation.x  = t * 0.20;
+    far.rotation.y    = t * 0.38;
+    far.rotation.z    = t * 0.22;
+    vFar.rotation.y   = t * 0.55;
+  };
+
+  updateScenePanel();
 }
 
 // ── input: touch (absolute — where finger is = eye direction) ─────────────
@@ -1001,6 +1129,37 @@ document.getElementById("btn-cal").addEventListener("click", calibrate);
   });
 }
 
+// ── scene panel ───────────────────────────────────────────────────────────
+function updateScenePanel() {
+  const items = document.querySelectorAll(".scene-item");
+  items.forEach((el, i) => el.classList.toggle("active", i === activeSceneIdx));
+  document.getElementById("scene-num").textContent = activeSceneIdx + 1;
+}
+
+{
+  const scenePanel = document.getElementById("scene-panel");
+
+  document.getElementById("btn-scene").addEventListener("click", (e) => {
+    e.stopPropagation();
+    scenePanel.classList.toggle("open");
+  });
+
+  document.addEventListener("pointerdown", (e) => {
+    if (scenePanel.classList.contains("open") && !scenePanel.contains(e.target)
+        && e.target.id !== "btn-scene") {
+      scenePanel.classList.remove("open");
+    }
+  });
+
+  document.querySelectorAll(".scene-item").forEach((btn, idx) => {
+    btn.addEventListener("click", () => {
+      if (idx === activeSceneIdx) return;
+      idx === 0 ? activateScene1() : activateScene2();
+      scenePanel.classList.remove("open");
+    });
+  });
+}
+
 // ── debug display (every frame) ───────────────────────────────────────────
 const xyDot  = document.getElementById("xy-dot");
 const dbgTxt = document.getElementById("dbg-vals");
@@ -1041,8 +1200,7 @@ setTimeout(() => {
 
 // ── build scene ───────────────────────────────────────────────────────────
 buildRoom();
-buildLights();
-const objs = buildObjects();
+activateScene1();
 applyOffAxis(); // initial call so scene isn't blank for first frame
 
 // ── loop ──────────────────────────────────────────────────────────────────
@@ -1071,13 +1229,7 @@ function animate() {
 
   t += 0.004;
 
-  objs.center.rotation.y = t * 0.35;
-  objs.center.rotation.x = Math.sin(t * 0.22) * 0.1;
-  objs.vClose.rotation.y = t * 0.9;
-  objs.vClose.rotation.z = t * 0.5;
-  objs.close.rotation.x  = t * 0.6;
-  objs.far.rotation.y    = t * 0.4;
-  objs.vFar.rotation.x   = t * 0.3;
+  if (sceneAnimFn) sceneAnimFn(t);
 
   // Adaptive smoothing: camera LERP is user-tunable via cfg.lerpCam
   const lerp = (cam.active && cam.tracking) ? cfg.lerpCam
