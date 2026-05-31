@@ -815,7 +815,10 @@ function drawDiagram() {
 
   const screenY = wz(0);        // z=0 screen plane
   const backY   = wz(DEPTH_FAR);
-  const eyeZY   = wz(EYE_Z);
+  // Use the same dynamic eyeZ as applyOffAxis() so head moves when user approaches
+  const currentEyeZ = (cam.active && cam.calibEyeDist > 0)
+    ? Math.min(EYE_Z * cam.faceDepth, EYE_Z * 2) : EYE_Z;
+  const eyeZY   = Math.max(3, wz(currentEyeZ)); // clamp to top of canvas
   const wallL   = wx(-halfW);
   const wallR   = wx(+halfW);
 
@@ -868,22 +871,39 @@ function drawDiagram() {
     ctx.fill();
   }
 
-  // Eye / head circle — positioned at (eyeX, EYE_Z) in world
+  // Eye / head — positioned at (eyeX, currentEyeZ) in world
   const headX = wx(eyeX);
   const headY = eyeZY;
   const tracking = cam.active && cam.tracking;
   const noFace   = cam.active && !cam.tracking;
   const headOpacity = tracking ? 1 : (noFace ? 0.25 : 0.55);
 
-  // Direction line from head toward screen center (z=0, x=0)
-  ctx.strokeStyle = `rgba(195,208,255,${headOpacity * 0.4})`;
-  ctx.lineWidth = 1;
+  // Gaze ray: from eye → through screen plane (z=0) → back wall (z=DEPTH_FAR).
+  // The ray passes through (0, 0) at z=0 (off-axis keeps screen center fixed).
+  // At z=DEPTH_FAR it diverges to x = eyeX * DEPTH_FAR / currentEyeZ.
+  // This is the critical visual: the ray PIERCES the screen and touches the back wall.
+  const rayBackX = wx(eyeX * DEPTH_FAR / currentEyeZ);
+  ctx.strokeStyle = `rgba(195,208,255,${headOpacity * 0.35})`;
+  ctx.lineWidth   = 1;
   ctx.setLineDash([2, 4]);
   ctx.beginPath();
   ctx.moveTo(headX, headY);
-  ctx.lineTo(wx(0), screenY);
+  ctx.lineTo(wx(0), screenY);  // through screen at z=0
+  ctx.lineTo(rayBackX, backY); // continues to back wall
   ctx.stroke();
   ctx.setLineDash([]);
+
+  // Screen pierce dot
+  ctx.fillStyle = `rgba(195,208,255,${headOpacity * 0.75})`;
+  ctx.beginPath();
+  ctx.arc(wx(0), screenY, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Back wall hit dot
+  ctx.fillStyle = `rgba(195,208,255,${headOpacity * 0.4})`;
+  ctx.beginPath();
+  ctx.arc(rayBackX, backY, 2, 0, Math.PI * 2);
+  ctx.fill();
 
   // Head circle fill + stroke
   ctx.fillStyle   = `rgba(195,200,220,${headOpacity * 0.13})`;
@@ -894,9 +914,9 @@ function drawDiagram() {
   ctx.fill();
   ctx.stroke();
 
-  // Yaw indicator inside head circle when tracking
+  // Gaze direction indicator inside head circle (uses 30° display scale, informational)
   if (tracking && cam.lastYaw !== 0) {
-    const yawRad = (-cam.lastYaw / HEAD_YAW_RANGE) * (Math.PI / 2.2);
+    const yawRad = (-cam.lastYaw / 30) * (Math.PI / 2.2);
     ctx.strokeStyle = "rgba(190,205,255,0.75)";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -911,13 +931,6 @@ function drawDiagram() {
     ctx.font = "8px monospace";
     ctx.fillText("sin cara", headX - 16, headY - 14);
   }
-
-  // Eye X offset marker on screen line (where eye projects to z=0)
-  const eyeProjX = wx(0); // at z=0 projection from eye hits screen center (off-axis keeps z=0 fixed)
-  ctx.fillStyle = "rgba(195,208,255,0.6)";
-  ctx.beginPath();
-  ctx.arc(wx(eyeX * 0), screenY, 2.5, 0, Math.PI * 2); // eye position projected on screen = always center
-  ctx.fill();
 
   // Stats
   const maxE = maxEye.toFixed(2);
