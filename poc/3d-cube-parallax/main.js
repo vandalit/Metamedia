@@ -23,15 +23,17 @@ scene.background = new THREE.Color(0x08080f);
 // Sits at EYE_Z, always looks along -Z (rotation stays 0,0,0).
 // Each frame: position shifts by eye offset, projection matrix rebuilt.
 // Never call camera.updateProjectionMatrix() — it would overwrite our matrix.
-const EYE_Z  = 5;
-const VFOV_R = 55 * Math.PI / 180;
+const EYE_Z      = 5;
+const VFOV_R     = 55 * Math.PI / 180;
+const DEPTH_NEAR =  3.0;  // front room cap  (z = +3, in front of screen plane)
+const DEPTH_FAR  = -2.5;  // back wall       (z = -2.5)
+const DEPTH_SPAN = DEPTH_NEAR - DEPTH_FAR;
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 50);
 camera.position.set(0, 0, EYE_Z);
 
 // ── input state ───────────────────────────────────────────────────────────
 const raw      = { x: 0, y: 0 };
 const smoothed = { x: 0, y: 0 };
-const MAX_EYE  = 1.8;
 
 // ── gyro state ────────────────────────────────────────────────────────────
 const gyro = {
@@ -48,6 +50,18 @@ const GYRO_RANGE    = 25; // degrees = full parallax swing
 const SIN_HALF_GYRO = Math.sin(GYRO_RANGE * Math.PI / 360); // for generic sensor normalization
 let   gyroListening = false;
 
+// ── viewport-derived room dimensions ─────────────────────────────────────────
+// Off-axis math ensures z=0 fills the viewport exactly → room opening = screen.
+// Recomputed on resize; used by buildRoom() and applyOffAxis().
+function computeViewport() {
+  const aspect = window.innerWidth / window.innerHeight;
+  const halfH  = EYE_Z * Math.tan(VFOV_R / 2);
+  const halfW  = halfH * aspect;
+  return { halfW, halfH, W: halfW * 2, H: halfH * 2 };
+}
+let VP        = computeViewport();
+let roomGroup = null; // stored for dispose + rebuild on resize
+
 // ── off-axis projection ───────────────────────────────────────────────────
 // Virtual screen at z=0. Frustum bounds keep screen edges fixed in world
 // space regardless of eye position → "window into a 3D world" illusion.
@@ -55,9 +69,10 @@ function applyOffAxis() {
   const aspect = window.innerWidth / window.innerHeight;
   const near = camera.near, far = camera.far;
   const halfH = EYE_Z * Math.tan(VFOV_R / 2);
-  const halfW = halfH * aspect;
-  const eyeX = smoothed.x * MAX_EYE;
-  const eyeY = smoothed.y * MAX_EYE;
+  const halfW  = halfH * aspect;
+  const maxEye = Math.min(halfW * 0.5, 1.5); // 50% of half-room width, hard cap at 1.5
+  const eyeX   = smoothed.x * maxEye;
+  const eyeY   = smoothed.y * maxEye;
   camera.position.set(eyeX, eyeY, EYE_Z);
   const l = near * (-halfW - eyeX) / EYE_Z;
   const r = near * ( halfW - eyeX) / EYE_Z;
@@ -67,38 +82,105 @@ function applyOffAxis() {
   camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
 }
 
-// ── scene: room (individual planes, unambiguous normals) ──────────────────
-function buildRoom() {
-  const mat = new THREE.MeshLambertMaterial({ color: 0x0f0f22 });
-  const planes = [
-    { size:[6,4],  pos:[0,0,-2],  rot:[0,0,0] },              // back wall
-    { size:[8,4],  pos:[-3,0,-1], rot:[0, Math.PI/2,0] },     // left wall
-    { size:[8,4],  pos:[ 3,0,-1], rot:[0,-Math.PI/2,0] },     // right wall
-    { size:[6,8],  pos:[0,-2,-1], rot:[-Math.PI/2,0,0] },     // floor
-    { size:[6,8],  pos:[0, 2,-1], rot:[ Math.PI/2,0,0] },     // ceiling
-  ];
-  for (const p of planes) {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(...p.size), mat);
-    m.position.set(...p.pos); m.rotation.set(...p.rot);
-    scene.add(m);
+// ── room: rectangular grid (XZ plane; rotate for vertical walls) ─────────
+function makeRectGrid(W, D, divW, divD, color, opacity) {
+  const pts = [];
+  for (let i = 0; i <= divW; i++) {
+    const x = (i / divW) * W - W / 2;
+    pts.push(new THREE.Vector3(x, 0, -D / 2), new THREE.Vector3(x, 0, D / 2));
   }
-  const grid = new THREE.GridHelper(6, 10, 0x1a2255, 0x0d1133);
-  grid.position.set(0, -1.99, -1); scene.add(grid);
-  const backGrid = new THREE.GridHelper(6, 10, 0x1a2255, 0x0d1133);
-  backGrid.rotation.x = Math.PI / 2; backGrid.position.set(0, 0, -1.99);
-  scene.add(backGrid);
-
-  // room edge lines for depth cue
-  const pts = [
-    [-3,-2,-2],[3,-2,-2],  [-3,2,-2],[3,2,-2],
-    [-3,-2,-2],[-3,2,-2],  [3,-2,-2],[3,2,-2],
-    [-3,-2,-2],[-3,-2,3],  [3,-2,-2],[3,-2,3],
-    [-3,2,-2], [-3,2,3],   [3,2,-2], [3,2,3],
-  ].map(c => new THREE.Vector3(...c));
-  scene.add(new THREE.LineSegments(
+  for (let j = 0; j <= divD; j++) {
+    const z = (j / divD) * D - D / 2;
+    pts.push(new THREE.Vector3(-W / 2, 0, z), new THREE.Vector3(W / 2, 0, z));
+  }
+  return new THREE.LineSegments(
     new THREE.BufferGeometry().setFromPoints(pts),
-    new THREE.LineBasicMaterial({ color: 0x223388 })
+    new THREE.LineBasicMaterial({ color, transparent: true, opacity })
+  );
+}
+
+// ── scene: room walls sized to viewport at z=0 ───────────────────────────
+// Wall placement: ±halfW (sides), ±halfH (floor/ceiling), DEPTH_FAR (back).
+// Grid division count = 1 cell per world unit for a legible coordinate system.
+function buildRoom() {
+  if (roomGroup) {
+    scene.remove(roomGroup);
+    roomGroup.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) o.material.dispose();
+    });
+  }
+  roomGroup = new THREE.Group();
+
+  const { halfW, halfH, W, H } = VP;
+  const midZ    = (DEPTH_NEAR + DEPTH_FAR) / 2;
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0x080818 });
+
+  const walls = [
+    { size: [W,          H          ], pos: [0,      0,      DEPTH_FAR], rot: [0,           0, 0] }, // back
+    { size: [DEPTH_SPAN, H          ], pos: [-halfW, 0,      midZ     ], rot: [0,  Math.PI/2, 0] }, // left
+    { size: [DEPTH_SPAN, H          ], pos: [+halfW, 0,      midZ     ], rot: [0, -Math.PI/2, 0] }, // right
+    { size: [W,          DEPTH_SPAN ], pos: [0,      -halfH, midZ     ], rot: [-Math.PI/2,   0, 0] }, // floor
+    { size: [W,          DEPTH_SPAN ], pos: [0,      +halfH, midZ     ], rot: [+Math.PI/2,   0, 0] }, // ceiling
+  ];
+  for (const w of walls) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(...w.size), wallMat.clone());
+    m.position.set(...w.pos); m.rotation.set(...w.rot);
+    roomGroup.add(m);
+  }
+
+  // Grid: 1 cell per world unit
+  const divW = Math.max(2, Math.round(W));
+  const divH = Math.max(2, Math.round(H));
+  const divD = Math.max(3, Math.round(DEPTH_SPAN));
+
+  const floorGrid = makeRectGrid(W, DEPTH_SPAN, divW, divD, 0x1a2255, 0.35);
+  floorGrid.position.set(0, -halfH + 0.005, midZ);
+  roomGroup.add(floorGrid);
+
+  const backWallGrid = makeRectGrid(W, H, divW, divH, 0x1a2255, 0.2);
+  backWallGrid.rotation.x = Math.PI / 2; // rotate XZ → XY plane
+  backWallGrid.position.set(0, 0, DEPTH_FAR + 0.005);
+  roomGroup.add(backWallGrid);
+
+  // Structural edges (4 corner depth lines + back wall perimeter)
+  const edgePts = [
+    [-halfW, -halfH, DEPTH_FAR], [-halfW, -halfH, DEPTH_NEAR],
+    [+halfW, -halfH, DEPTH_FAR], [+halfW, -halfH, DEPTH_NEAR],
+    [-halfW, +halfH, DEPTH_FAR], [-halfW, +halfH, DEPTH_NEAR],
+    [+halfW, +halfH, DEPTH_FAR], [+halfW, +halfH, DEPTH_NEAR],
+    [-halfW, -halfH, DEPTH_FAR], [+halfW, -halfH, DEPTH_FAR],
+    [-halfW, +halfH, DEPTH_FAR], [+halfW, +halfH, DEPTH_FAR],
+    [-halfW, -halfH, DEPTH_FAR], [-halfW, +halfH, DEPTH_FAR],
+    [+halfW, -halfH, DEPTH_FAR], [+halfW, +halfH, DEPTH_FAR],
+  ].map(c => new THREE.Vector3(...c));
+  roomGroup.add(new THREE.LineSegments(
+    new THREE.BufferGeometry().setFromPoints(edgePts),
+    new THREE.LineBasicMaterial({ color: 0x223388, transparent: true, opacity: 0.5 })
   ));
+
+  // Screen-plane rectangle (z=0) — the virtual window / "glass" boundary
+  const screenPts = [
+    [-halfW, -halfH, 0], [+halfW, -halfH, 0],
+    [+halfW, -halfH, 0], [+halfW, +halfH, 0],
+    [+halfW, +halfH, 0], [-halfW, +halfH, 0],
+    [-halfW, +halfH, 0], [-halfW, -halfH, 0],
+  ].map(c => new THREE.Vector3(...c));
+  roomGroup.add(new THREE.LineSegments(
+    new THREE.BufferGeometry().setFromPoints(screenPts),
+    new THREE.LineBasicMaterial({ color: 0x3355aa, transparent: true, opacity: 0.45 })
+  ));
+
+  // Depth spine — z-axis at x=0, y=0 (main depth reference)
+  roomGroup.add(new THREE.LineSegments(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, DEPTH_FAR),
+      new THREE.Vector3(0, 0, DEPTH_NEAR),
+    ]),
+    new THREE.LineBasicMaterial({ color: 0x334499, transparent: true, opacity: 0.3 })
+  ));
+
+  scene.add(roomGroup);
 }
 
 function wireObj(geo, faceColor, wireColor) {
@@ -112,21 +194,25 @@ function wireObj(geo, faceColor, wireColor) {
 }
 
 function buildObjects() {
-  // 5 objects at distinct Z depths — differential parallax shift makes depth obvious
-  const vClose = wireObj(new THREE.OctahedronGeometry(0.28), 0xdd3300, 0xff6644);
-  vClose.position.set(-0.5, 0.2, 2.5); scene.add(vClose);         // z=+2.5 → moves most
+  // Positions expressed as fractions of half-room dimensions so they
+  // stay proportional across portrait/landscape/any device viewport.
+  const { halfW, halfH } = VP;
+  const s = halfH * 0.1; // size unit = 10% of half-height
 
-  const close = wireObj(new THREE.BoxGeometry(0.5,0.5,0.5), 0x8833cc, 0xbb66ff);
-  close.position.set(0.6, -0.3, 1.0); scene.add(close);           // z=+1.0
+  const vClose = wireObj(new THREE.OctahedronGeometry(s * 0.85), 0xdd3300, 0xff6644);
+  vClose.position.set(-halfW * 0.4,  halfH * 0.10,  2.5); scene.add(vClose); // z=+2.5 → moves most
 
-  const center = wireObj(new THREE.BoxGeometry(0.9,0.9,0.9), 0x2244cc, 0x5577ff);
-  scene.add(center);                                                // z=0 → never moves
+  const close = wireObj(new THREE.BoxGeometry(s, s, s), 0x8833cc, 0xbb66ff);
+  close.position.set( halfW * 0.4, -halfH * 0.15,  1.0); scene.add(close);   // z=+1.0
 
-  const far = wireObj(new THREE.TetrahedronGeometry(0.28), 0x22aa55, 0x55ff88);
-  far.position.set(-0.4, 0.3, -1.5); scene.add(far);              // z=-1.5
+  const center = wireObj(new THREE.BoxGeometry(s * 2.2, s * 2.2, s * 2.2), 0x2244cc, 0x5577ff);
+  center.position.set(0, 0, 0); scene.add(center);                            // z=0 → never moves
 
-  const vFar = wireObj(new THREE.IcosahedronGeometry(0.18), 0x55aaff, 0x88ccff);
-  vFar.position.set(0.3, -0.2, -1.9); scene.add(vFar);            // z=-1.9 → moves least
+  const far = wireObj(new THREE.TetrahedronGeometry(s * 0.85), 0x22aa55, 0x55ff88);
+  far.position.set(-halfW * 0.3,  halfH * 0.20, -1.5); scene.add(far);       // z=-1.5
+
+  const vFar = wireObj(new THREE.IcosahedronGeometry(s * 0.6), 0x55aaff, 0x88ccff);
+  vFar.position.set( halfW * 0.25, -halfH * 0.10, -1.9); scene.add(vFar);    // z=-1.9 → moves least
 
   return { vClose, close, center, far, vFar };
 }
@@ -656,6 +742,8 @@ function updateDebug() {
 window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
+  VP = computeViewport();
+  buildRoom(); // room geometry must match new viewport dimensions
   // applyOffAxis() rebuilds projection matrix next frame — no updateProjectionMatrix()
 });
 
