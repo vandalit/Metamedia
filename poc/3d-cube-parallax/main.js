@@ -31,6 +31,14 @@ const DEPTH_SPAN = DEPTH_NEAR - DEPTH_FAR;
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 50);
 camera.position.set(0, 0, EYE_Z);
 
+// ── mutable config (driven by #cfg-panel sliders) ────────────────────────
+const cfg = {
+  maxEyeFactor: 0.65,  // fraction of halfW the eye can travel laterally
+  vfovDeg:      55,    // vertical FOV in degrees; changes rebuild room geometry
+  lerpCam:      0.50,  // camera-input smoothing (higher = faster response)
+  microSmooth:  false, // velocity-adaptive jitter attenuation
+};
+
 // ── input state ───────────────────────────────────────────────────────────
 const raw      = { x: 0, y: 0 };
 const smoothed = { x: 0, y: 0 };
@@ -55,7 +63,7 @@ let   gyroListening = false;
 // Recomputed on resize; used by buildRoom() and applyOffAxis().
 function computeViewport() {
   const aspect = window.innerWidth / window.innerHeight;
-  const halfH  = EYE_Z * Math.tan(VFOV_R / 2);
+  const halfH  = EYE_Z * Math.tan(cfg.vfovDeg * Math.PI / 180 / 2);
   const halfW  = halfH * aspect;
   return { halfW, halfH, W: halfW * 2, H: halfH * 2 };
 }
@@ -71,9 +79,9 @@ function applyOffAxis(eyeZ) {
   eyeZ = eyeZ || EYE_Z;
   const aspect = window.innerWidth / window.innerHeight;
   const near = camera.near, far = camera.far;
-  const halfH = eyeZ * Math.tan(VFOV_R / 2);
+  const halfH  = eyeZ * Math.tan(cfg.vfovDeg * Math.PI / 180 / 2);
   const halfW  = halfH * aspect;
-  const maxEye = Math.min(halfW * 0.65, 1.5);
+  const maxEye = halfW * cfg.maxEyeFactor;
   const eyeX   = smoothed.x * maxEye;
   const eyeY   = smoothed.y * maxEye;
   camera.position.set(eyeX, eyeY, eyeZ);
@@ -757,8 +765,9 @@ const DIAG_W = 244, DIAG_H = 194;
   header.addEventListener("pointerdown", (e) => {
     if (e.target.closest("button, #diag-st")) return;
     const rect = panel.getBoundingClientRect();
-    panel.style.left = rect.left + "px";
-    panel.style.top  = rect.top  + "px";
+    panel.style.right = "auto";
+    panel.style.left  = rect.left + "px";
+    panel.style.top   = rect.top  + "px";
     drag = { startX: e.clientX, startY: e.clientY,
              startLeft: rect.left, startTop: rect.top, moved: false };
     header.setPointerCapture(e.pointerId);
@@ -951,21 +960,63 @@ function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 document.getElementById("btn-gyro").addEventListener("click", activateGyro);
 document.getElementById("btn-cal").addEventListener("click", calibrate);
 
+// ── config panel ──────────────────────────────────────────────────────────
+{
+  const cfgPanel = document.getElementById("cfg-panel");
+
+  document.getElementById("btn-cfg").addEventListener("click", (e) => {
+    e.stopPropagation();
+    cfgPanel.classList.toggle("open");
+  });
+
+  document.addEventListener("pointerdown", (e) => {
+    if (cfgPanel.classList.contains("open") && !cfgPanel.contains(e.target)
+        && e.target.id !== "btn-cfg") {
+      cfgPanel.classList.remove("open");
+    }
+  });
+
+  document.getElementById("sl-par").addEventListener("input", function() {
+    cfg.maxEyeFactor = +this.value / 100;
+    document.getElementById("sl-par-v").textContent = this.value + "%";
+  });
+
+  document.getElementById("sl-fov").addEventListener("input", function() {
+    cfg.vfovDeg = +this.value;
+    document.getElementById("sl-fov-v").textContent = this.value + "°";
+    VP = computeViewport();
+    buildRoom();
+  });
+
+  document.getElementById("sl-lerp").addEventListener("input", function() {
+    cfg.lerpCam = +this.value / 100;
+    document.getElementById("sl-lerp-v").textContent = cfg.lerpCam.toFixed(2);
+  });
+
+  const btnMicro = document.getElementById("btn-micro");
+  btnMicro.addEventListener("click", () => {
+    cfg.microSmooth = !cfg.microSmooth;
+    btnMicro.textContent = cfg.microSmooth ? "ON" : "OFF";
+    btnMicro.classList.toggle("on", cfg.microSmooth);
+  });
+}
+
 // ── debug display (every frame) ───────────────────────────────────────────
 const xyDot  = document.getElementById("xy-dot");
 const dbgTxt = document.getElementById("dbg-vals");
 function updateDebug() {
   xyDot.style.left = (smoothed.x * 0.5 + 0.5) * 100 + "%";
   xyDot.style.top  = (-smoothed.y * 0.5 + 0.5) * 100 + "%";
-  const g = gyro.gamma !== null ? gyro.gamma.toFixed(1) + "°" : "—";
-  const b = gyro.beta  !== null ? gyro.beta.toFixed(1)  + "°" : "—";
+  const g = gyro.gamma !== null ? gyro.gamma.toFixed(1).padStart(6) + "°" : "     —°";
+  const b = gyro.beta  !== null ? gyro.beta.toFixed(1).padStart(6)  + "°" : "     —°";
+  const fpsStr = fps.toString().padStart(2) + "fps";
   const lagPart = (cam.active && cam.detectMs > 0)
-    ? `  lag:${Math.round(performance.now() - cam.detectMs)}ms`
-    : "";
+    ? " lag:" + Math.round(performance.now() - cam.detectMs).toString().padStart(3) + "ms"
+    : "           ";
   const depthPart = (cam.active && cam.calibEyeDist > 0)
-    ? `  dZ:${cam.faceDepth.toFixed(2)}`
+    ? " dZ:" + cam.faceDepth.toFixed(2)
     : "";
-  dbgTxt.textContent = `x:${smoothed.x.toFixed(2)}  y:${smoothed.y.toFixed(2)}  γ:${g}  β:${b}  ${fps}fps${lagPart}${depthPart}`;
+  dbgTxt.textContent = `x:${smoothed.x.toFixed(2)} y:${smoothed.y.toFixed(2)} γ:${g} β:${b} ${fpsStr}${lagPart}${depthPart}`;
 }
 
 // ── resize ────────────────────────────────────────────────────────────────
@@ -998,9 +1049,9 @@ applyOffAxis(); // initial call so scene isn't blank for first frame
 // Adaptive LERP: camera gets high value (fast response) because we now
 // trigger processFrame on video frame boundaries, not a 33ms timer.
 // Gyro is already filtered by the sensor; smooth more. Touch is in between.
-const LERP_CAM   = 0.50; // ~3 frames to 90% — camera data is already 66-100ms old
 const LERP_GYRO  = 0.12; // ~18 frames to 90% — gyro is noisy, smooth heavily
 const LERP_TOUCH = 0.15; // ~12 frames to 90%
+// Camera LERP is mutable via cfg.lerpCam (default 0.50)
 
 let t = 0;
 let fps = 0, _fpsFrames = 0, _fpsLast = performance.now();
@@ -1028,12 +1079,22 @@ function animate() {
   objs.far.rotation.y    = t * 0.4;
   objs.vFar.rotation.x   = t * 0.3;
 
-  // Adaptive smoothing: camera needs faster response than gyro
-  const lerp = (cam.active && cam.tracking) ? LERP_CAM
+  // Adaptive smoothing: camera LERP is user-tunable via cfg.lerpCam
+  const lerp = (cam.active && cam.tracking) ? cfg.lerpCam
              : gyro.active                  ? LERP_GYRO
              :                                LERP_TOUCH;
-  smoothed.x += (raw.x - smoothed.x) * lerp;
-  smoothed.y += (raw.y - smoothed.y) * lerp;
+  const dx = raw.x - smoothed.x;
+  const dy = raw.y - smoothed.y;
+  if (cfg.microSmooth) {
+    // Velocity-adaptive: attenuate micro-jitter without slowing large movements
+    const vel   = Math.hypot(dx, dy);
+    const scale = Math.min(vel / 0.015, 1);
+    smoothed.x += dx * lerp * scale;
+    smoothed.y += dy * lerp * scale;
+  } else {
+    smoothed.x += dx * lerp;
+    smoothed.y += dy * lerp;
+  }
 
   // Process camera on every NEW video frame (not on a fixed timer).
   if (cam.active && cam.video && cam.video.currentTime !== cam.lastVideoTime) {
