@@ -1,6 +1,6 @@
 # Criterios Ópticos — Sistema de Parallax Off-Axis
 
-**Fecha:** 2026-05-31  
+**Fecha:** 2026-05-31 (actualizado 2026-05-31)  
 **Contexto:** POC de parallax 3D controlado por head tracking (cámara) o giroscopio sobre pantalla de dispositivo móvil.
 
 ---
@@ -156,3 +156,98 @@ La tecnología cubre el flujo completo. Lo que falta es **calibración**:
 - Evaluar si LERP diferenciado por fuente de input mejora la respuesta subjetiva
 
 Estos ajustes se harán con referencia a las matemáticas del diagrama SPACE y al feedback de prueba en dispositivo real.
+
+---
+
+## Corrección de modelo — 2026-05-31: rotación → traslación
+
+### El error identificado
+
+El sistema usaba **rotación de la cabeza (yaw/pitch)** como proxy de la posición del ojo.
+Esto es incorrecto para el modelo de ventana. La ilusión requiere saber DÓNDE está el ojo en el espacio
+físico (traslación), no hacia dónde mira (rotación).
+
+**Caso de falla del modelo anterior:** el usuario traslada la cabeza lateralmente sin girarla → yaw=0 → sin parallax.
+Pero ese movimiento translacional ES el que genera la ilusión de ventana.
+
+### La triangulación cámara–pantalla–ojo
+
+```
+[CÁMARA]  ← top del dispositivo (~1-3cm sobre el borde superior de pantalla)
+    |
+    |  vector cámara→rostro
+    |
+════╪════  PANTALLA z=0 (centro de pantalla)
+    |
+  [OJO]  ← posición real del ojo en espacio físico
+```
+
+El ojo no está donde apunta la cámara. El offset Y (cámara arriba del centro de pantalla)
+se corrige capturando la posición neutral en calibración.
+
+### Señal correcta: centroide de ojos en imagen
+
+| Señal | Tipo | Para parallax | Estado |
+|-------|------|--------------|--------|
+| yaw/pitch (anterior) | Rotación | Incorrecto — traslación sin giro → sin parallax | Reemplazado |
+| nose.x en imagen | Traslación 2D | Mejor proxy, era el fallback | Integrado en path principal |
+| centroide de ojos L33+R263 | Traslación 2D | Señal translacional estable y simétrica | **Implementado** |
+| mData[12,13,14] | Traslación 3D | Señal óptima, en espacio de cámara | Pendiente (Fase 2 revisión) |
+
+### Profundidad dinámica (EYE_Z)
+
+La distancia inter-ocular en imagen es inversamente proporcional a la distancia usuario–pantalla:
+- Usuario cerca → ojos aparecen separados en imagen → `eyeDist` grande
+- Usuario lejos → `eyeDist` pequeño
+
+```
+faceDepth = calibEyeDist / eyeDist
+dynamicEyeZ = EYE_Z * faceDepth
+```
+
+Con `calibEyeDist` capturado al momento de calibrar, `faceDepth=1` significa
+"a la misma distancia que en calibración". `faceDepth=1.5` significa 50% más lejos.
+
+### Módulos del pipeline (modo cámara)
+
+```
+MediaPipe landmarks
+    ↓
+extractFaceData()       → faceX, faceY (centroide ojos), eyeDist
+    ↓
+calibrateCamera()       → calibX, calibY, calibEyeDist (captura posición neutra)
+    ↓
+processFrame()          → raw.x = -(faceX - 0.5 - calibX) / FACE_RANGE_X
+                          cam.faceDepth = calibEyeDist / eyeDist
+    ↓
+animate()               → dynamicEyeZ = EYE_Z * faceDepth
+    ↓
+applyOffAxis(eyeZ)      → frustum asimétrico con eyeZ dinámico
+```
+
+### Variables nuevas del sistema
+
+| Variable | Descripción |
+|----------|-------------|
+| `cam.calibX` | Offset X del centroide de ojos en imagen al momento de calibración |
+| `cam.calibY` | Offset Y del centroide de ojos en imagen al momento de calibración |
+| `cam.calibEyeDist` | Distancia inter-ocular en imagen en la posición de referencia |
+| `cam.faceDepth` | Ratio distancia actual vs referencia (1=igual, >1=más lejos) |
+| `FACE_RANGE_X` | 0.25 — 25% del ancho de imagen = parallax completo |
+| `FACE_RANGE_Y` | 0.20 — 20% del alto de imagen = parallax completo |
+
+### Blur de feedback
+
+Cuando la cara sale del frame, la ilusión se rompe. Se aplica desenfoque progresivo
+sobre el canvas de Three.js vía CSS filter:
+
+```javascript
+renderer.domElement.style.filter = `blur(${blurPx}px)`;
+```
+
+- Cara presente → blur=0
+- Cara perdida → blur sube hasta 12px en ~50 frames
+- Cara regresa → blur desaparece rápido (LERP 0.12 hacia 0)
+
+Este feedback visual indica al usuario que debe re-encuadrarse, y será útil
+en el flujo de calibración guiada.

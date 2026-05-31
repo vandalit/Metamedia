@@ -65,19 +65,22 @@ let roomGroup = null; // stored for dispose + rebuild on resize
 // ── off-axis projection ───────────────────────────────────────────────────
 // Virtual screen at z=0. Frustum bounds keep screen edges fixed in world
 // space regardless of eye position → "window into a 3D world" illusion.
-function applyOffAxis() {
+// eyeZ: optional dynamic eye distance; defaults to EYE_Z constant.
+// When the user is closer, eyeZ shrinks → same head movement = more parallax.
+function applyOffAxis(eyeZ) {
+  eyeZ = eyeZ || EYE_Z;
   const aspect = window.innerWidth / window.innerHeight;
   const near = camera.near, far = camera.far;
-  const halfH = EYE_Z * Math.tan(VFOV_R / 2);
+  const halfH = eyeZ * Math.tan(VFOV_R / 2);
   const halfW  = halfH * aspect;
-  const maxEye = Math.min(halfW * 0.65, 1.5); // 65% of half-room width (was 50%), hard cap at 1.5
+  const maxEye = Math.min(halfW * 0.65, 1.5);
   const eyeX   = smoothed.x * maxEye;
   const eyeY   = smoothed.y * maxEye;
-  camera.position.set(eyeX, eyeY, EYE_Z);
-  const l = near * (-halfW - eyeX) / EYE_Z;
-  const r = near * ( halfW - eyeX) / EYE_Z;
-  const t = near * ( halfH - eyeY) / EYE_Z;
-  const b = near * (-halfH - eyeY) / EYE_Z;
+  camera.position.set(eyeX, eyeY, eyeZ);
+  const l = near * (-halfW - eyeX) / eyeZ;
+  const r = near * ( halfW - eyeX) / eyeZ;
+  const t = near * ( halfH - eyeY) / eyeZ;
+  const b = near * (-halfH - eyeY) / eyeZ;
   camera.projectionMatrix.makePerspective(l, r, t, b, near, far);
   camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
 }
@@ -471,8 +474,10 @@ document.getElementById("help-touch").addEventListener("click", () => {
 const MEDIAPIPE_VERSION = "0.10.14";
 const WASM_PATH  = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
 const MODEL_PATH = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
-const HEAD_YAW_RANGE   = 14; // degrees yaw  = full parallax (was 22 — natural movement is 3-8°)
-const HEAD_PITCH_RANGE = 12; // degrees pitch = full parallax (was 18)
+// Face position range: how far from center (in normalized image coords) = full parallax.
+// 0.25 = the face must travel 25% of image width to reach raw.x=±1.
+const FACE_RANGE_X = 0.25;
+const FACE_RANGE_Y = 0.20;
 
 const cam = {
   panelOpen:  false,
@@ -487,10 +492,14 @@ const cam = {
   lastProcess:   0,
   lastVideoTime: 0,     // last video.currentTime processed (avoids re-processing same frame)
   detectMs:      0,     // performance.now() when last detection completed (latency probe)
-  calibYaw:   0,        // baseline yaw for calibration
-  calibPitch: 0,
-  lastYaw:    0,        // last computed yaw (degrees, stored for diagram)
-  lastPitch:  0,        // last computed pitch (degrees, stored for diagram)
+  // Calibration (set by calibrateCamera())
+  calibX:      0,       // face centroid X offset from 0.5 at calibration
+  calibY:      0,       // face centroid Y offset from 0.5 at calibration
+  calibEyeDist: 0,      // inter-eye distance at calibration distance (depth reference)
+  // Live face data
+  faceDepth:   1,       // ratio calibEyeDist/eyeDist — >1 = farther than reference
+  lastYaw:     0,       // last computed yaw (degrees, for diagram display)
+  lastPitch:   0,
 };
 
 // Panel drag + toggle — pointer capture lets drag work on touch and mouse.
@@ -641,34 +650,37 @@ function processFrame() {
   const landmarks = results.faceLandmarks[0];
   drawLandmarks(landmarks);
 
-  // Head pose via facial transformation matrix (yaw/pitch without calibration step)
+  // PRIMARY: eye centroid position in image — translational signal.
+  // This is what the parallax window illusion requires: WHERE the eye is,
+  // not WHICH WAY it is looking. Moving the head laterally without rotating
+  // the face still shifts the eye centroid in the image.
+  const leftEye  = landmarks[33];
+  const rightEye = landmarks[263];
+  const faceX    = (leftEye.x + rightEye.x) / 2;
+  const faceY    = (leftEye.y + rightEye.y) / 2;
+  const eyeDist  = Math.hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y);
+
+  // Depth estimation: inter-eye distance shrinks as user moves farther away.
+  // faceDepth > 1 = farther than calibration reference → larger eyeZ → less parallax.
+  if (cam.calibEyeDist > 0) {
+    cam.faceDepth = cam.calibEyeDist / Math.max(eyeDist, 0.005);
+  }
+
+  // Position offset from calibration neutral (not from image center, from where user
+  // was when they pressed Calibrate — corrects for camera-screen Y offset).
+  raw.x = clamp(-(faceX - 0.5 - cam.calibX) / FACE_RANGE_X, -1, 1);
+  raw.y = clamp(-(faceY - 0.5 - cam.calibY) / FACE_RANGE_Y, -1, 1);
+
+  // Store rotation angles for diagram and debug display (secondary, informational)
   const mData = results.facialTransformationMatrixes?.[0]?.data;
   if (mData) {
-    // Column-major 4×4: m[8]=R02, m[9]=R12, m[10]=R22 → ZYX euler
-    const rawYaw   = Math.atan2(mData[8], mData[10]) * 180 / Math.PI;
-    const rawPitch = Math.asin(-Math.max(-1, Math.min(1, mData[9]))) * 180 / Math.PI;
-
-    const yaw   = rawYaw   - cam.calibYaw;
-    const pitch = rawPitch - cam.calibPitch;
-
-    cam.lastYaw   = yaw;   // stored for diagram panel
-    cam.lastPitch = pitch;
-
-    // Camera overrides gyro/touch when tracking
-    raw.x = clamp(-yaw   / HEAD_YAW_RANGE,   -1, 1);
-    raw.y = clamp( pitch / HEAD_PITCH_RANGE,  -1, 1);
-
-    cam.tracking = true;
-    camStats(`yaw:${yaw.toFixed(1)}° pitch:${pitch.toFixed(1)}°`);
-    chip("c-input", "face", "ok");
-  } else {
-    // Fallback: nose tip relative position
-    const nose = landmarks[1];
-    raw.x = clamp(-(nose.x - 0.5) / 0.15, -1, 1);
-    raw.y = clamp(-(nose.y - 0.5) / 0.12, -1, 1);
-    cam.tracking = true;
-    camStats(`nose x:${nose.x.toFixed(2)} y:${nose.y.toFixed(2)}`);
+    cam.lastYaw   = Math.atan2(mData[8], mData[10]) * 180 / Math.PI;
+    cam.lastPitch = Math.asin(-Math.max(-1, Math.min(1, mData[9]))) * 180 / Math.PI;
   }
+
+  cam.tracking = true;
+  camStats(`x:${(faceX - 0.5).toFixed(3)}  y:${(faceY - 0.5).toFixed(3)}  d:${eyeDist.toFixed(3)}`);
+  chip("c-input", "face", "ok");
 }
 
 function drawLandmarks(lm) {
@@ -691,11 +703,18 @@ function drawLandmarks(lm) {
 function calibrateCamera() {
   if (!cam.landmarker || !cam.video || cam.video.readyState < 2) return;
   const results = cam.landmarker.detectForVideo(cam.video, performance.now());
-  if (!results.facialTransformationMatrixes?.length) return;
-  const mData = results.facialTransformationMatrixes[0].data;
-  cam.calibYaw   = Math.atan2(mData[8], mData[10]) * 180 / Math.PI;
-  cam.calibPitch = Math.asin(-Math.max(-1, Math.min(1, mData[9]))) * 180 / Math.PI;
+  if (!results.faceLandmarks?.length) return;
+  const landmarks = results.faceLandmarks[0];
+  const leftEye  = landmarks[33];
+  const rightEye = landmarks[263];
+  // Capture face centroid as "neutral" position — corrects for camera-screen Y offset
+  // and any positional bias from camera placement on device.
+  cam.calibX     = (leftEye.x + rightEye.x) / 2 - 0.5;
+  cam.calibY     = (leftEye.y + rightEye.y) / 2 - 0.5;
+  cam.calibEyeDist = Math.hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y);
+  cam.faceDepth  = 1; // reset depth ratio to reference
   raw.x = 0; raw.y = 0; smoothed.x = 0; smoothed.y = 0;
+  camStats("calibrado — posición y distancia de referencia capturadas");
 }
 
 function setCamSt(text, cls) {
@@ -728,7 +747,7 @@ document.getElementById("btn-cam-bar").addEventListener("click", quickCam);
 // by the system are displayed — no invented distances or estimates.
 
 const diag = { panelOpen: false };
-const DIAG_W = 244, DIAG_H = 194;
+const DIAG_W = 340, DIAG_H = 160;
 
 {
   const panel  = document.getElementById("diag-panel");
@@ -903,6 +922,7 @@ function drawDiagram() {
   // Stats
   const maxE = maxEye.toFixed(2);
   let statsStr = `eyeX:${eyeX.toFixed(2)}u  maxEye:${maxE}u  x:${smoothed.x.toFixed(2)}`;
+  if (cam.calibEyeDist > 0) statsStr += `  dZ:${cam.faceDepth.toFixed(2)}`;
   if (tracking) statsStr += `  yaw:${cam.lastYaw.toFixed(1)}°`;
   document.getElementById("diag-stats").textContent = statsStr;
 }
@@ -927,11 +947,13 @@ function updateDebug() {
   xyDot.style.top  = (-smoothed.y * 0.5 + 0.5) * 100 + "%";
   const g = gyro.gamma !== null ? gyro.gamma.toFixed(1) + "°" : "—";
   const b = gyro.beta  !== null ? gyro.beta.toFixed(1)  + "°" : "—";
-  // cam.detectMs > 0: lag = ms since last detection completed → measures pipeline age
   const lagPart = (cam.active && cam.detectMs > 0)
     ? `  lag:${Math.round(performance.now() - cam.detectMs)}ms`
     : "";
-  dbgTxt.textContent = `x:${smoothed.x.toFixed(2)}  y:${smoothed.y.toFixed(2)}  γ:${g}  β:${b}  ${fps}fps${lagPart}`;
+  const depthPart = (cam.active && cam.calibEyeDist > 0)
+    ? `  dZ:${cam.faceDepth.toFixed(2)}`
+    : "";
+  dbgTxt.textContent = `x:${smoothed.x.toFixed(2)}  y:${smoothed.y.toFixed(2)}  γ:${g}  β:${b}  ${fps}fps${lagPart}${depthPart}`;
 }
 
 // ── resize ────────────────────────────────────────────────────────────────
@@ -970,6 +992,7 @@ const LERP_TOUCH = 0.15; // ~12 frames to 90%
 
 let t = 0;
 let fps = 0, _fpsFrames = 0, _fpsLast = performance.now();
+let blurCurrent = 0; // for viewport blur on tracking loss
 
 function animate() {
   requestAnimationFrame(animate);
@@ -1001,17 +1024,30 @@ function animate() {
   smoothed.y += (raw.y - smoothed.y) * lerp;
 
   // Process camera on every NEW video frame (not on a fixed timer).
-  // video.currentTime only advances when the browser decodes a new frame,
-  // so this fires at the camera's actual framerate (typically 30fps) without
-  // polling overhead or skipping fresh frames.
   if (cam.active && cam.video && cam.video.currentTime !== cam.lastVideoTime) {
     cam.lastVideoTime = cam.video.currentTime;
     processFrame();
   }
 
+  // Blur feedback: when camera is active but face is lost, the illusion breaks.
+  // Gaussian blur signals this to the user and helps them re-enter the frame.
+  // CSS filter is GPU-accelerated and needs no Three.js post-processing.
+  const blurTarget = (cam.active && !cam.tracking) ? 1 : 0;
+  blurCurrent += (blurTarget - blurCurrent) * 0.06; // ~50 frames to full blur
+  if (blurCurrent > 0.015) {
+    renderer.domElement.style.filter = `blur(${(blurCurrent * 12).toFixed(1)}px)`;
+  } else if (renderer.domElement.style.filter) {
+    renderer.domElement.style.filter = '';
+  }
+
   if (diag.panelOpen) drawDiagram();
 
-  applyOffAxis();
+  // Dynamic eyeZ: when calibrated, scale based on face depth proxy.
+  // Capped at 2× reference to avoid extreme frustum distortion.
+  const dynamicEyeZ = (cam.active && cam.calibEyeDist > 0)
+    ? Math.min(EYE_Z * cam.faceDepth, EYE_Z * 2)
+    : EYE_Z;
+  applyOffAxis(dynamicEyeZ);
   updateDebug();
   renderer.render(scene, camera);
 }
