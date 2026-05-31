@@ -70,7 +70,7 @@ function applyOffAxis() {
   const near = camera.near, far = camera.far;
   const halfH = EYE_Z * Math.tan(VFOV_R / 2);
   const halfW  = halfH * aspect;
-  const maxEye = Math.min(halfW * 0.5, 1.5); // 50% of half-room width, hard cap at 1.5
+  const maxEye = Math.min(halfW * 0.65, 1.5); // 65% of half-room width (was 50%), hard cap at 1.5
   const eyeX   = smoothed.x * maxEye;
   const eyeY   = smoothed.y * maxEye;
   camera.position.set(eyeX, eyeY, EYE_Z);
@@ -206,7 +206,7 @@ function buildObjects() {
   close.position.set( halfW * 0.4, -halfH * 0.15,  1.0); scene.add(close);   // z=+1.0
 
   const center = wireObj(new THREE.BoxGeometry(s * 2.2, s * 2.2, s * 2.2), 0x2244cc, 0x5577ff);
-  center.position.set(0, 0, 0); scene.add(center);                            // z=0 → never moves
+  center.position.set(0, 0, 0.4); scene.add(center);                          // z=+0.4 → slight foreground parallax
 
   const far = wireObj(new THREE.TetrahedronGeometry(s * 0.85), 0x22aa55, 0x55ff88);
   far.position.set(-halfW * 0.3,  halfH * 0.20, -1.5); scene.add(far);       // z=-1.5
@@ -471,8 +471,8 @@ document.getElementById("help-touch").addEventListener("click", () => {
 const MEDIAPIPE_VERSION = "0.10.14";
 const WASM_PATH  = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
 const MODEL_PATH = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
-const HEAD_YAW_RANGE   = 22; // degrees yaw  = full parallax
-const HEAD_PITCH_RANGE = 18; // degrees pitch = full parallax
+const HEAD_YAW_RANGE   = 14; // degrees yaw  = full parallax (was 22 — natural movement is 3-8°)
+const HEAD_PITCH_RANGE = 12; // degrees pitch = full parallax (was 18)
 
 const cam = {
   panelOpen:  false,
@@ -484,7 +484,9 @@ const cam = {
   ctx:        null,     // 2D context
   stream:     null,     // MediaStream
   landmarker: null,     // FaceLandmarker instance
-  lastProcess: 0,
+  lastProcess:   0,
+  lastVideoTime: 0,     // last video.currentTime processed (avoids re-processing same frame)
+  detectMs:      0,     // performance.now() when last detection completed (latency probe)
   calibYaw:   0,        // baseline yaw for calibration
   calibPitch: 0,
   lastYaw:    0,        // last computed yaw (degrees, stored for diagram)
@@ -625,6 +627,7 @@ function processFrame() {
 
   const now = performance.now();
   const results = cam.landmarker.detectForVideo(cam.video, now);
+  cam.detectMs = performance.now(); // timestamp detection completion for lag probe
   cam.ctx.clearRect(0, 0, 176, 132);
 
   if (!results.faceLandmarks?.length) {
@@ -777,7 +780,7 @@ function drawDiagram() {
   ctx.clearRect(0, 0, DIAG_W, DIAG_H);
 
   const { halfW } = VP;
-  const maxEye = Math.min(halfW * 0.5, 1.5);
+  const maxEye = Math.min(halfW * 0.65, 1.5);
   const eyeX   = smoothed.x * maxEye; // actual current eye X in world units
 
   // Z-axis mapping: zMin (back wall) → bottom of canvas, EYE_Z → top
@@ -835,7 +838,7 @@ function drawDiagram() {
   const sceneObjs = [
     { x: -halfW * 0.4,  z: 2.5,  r: 4.5, color: "rgba(255,138,98,0.88)"  }, // vClose orange
     { x:  halfW * 0.4,  z: 1.0,  r: 3.5, color: "rgba(178,138,255,0.88)" }, // close purple
-    { x:  0,            z: 0,    r: 5,   color: "rgba(128,158,255,0.88)" }, // center blue
+    { x:  0,            z: 0.4,  r: 5,   color: "rgba(128,158,255,0.88)" }, // center blue
     { x: -halfW * 0.3,  z: -1.5, r: 3.5, color: "rgba(118,218,158,0.88)" }, // far green
     { x:  halfW * 0.25, z: -1.9, r: 3,   color: "rgba(138,198,255,0.88)" }, // vFar sky
   ];
@@ -924,7 +927,11 @@ function updateDebug() {
   xyDot.style.top  = (-smoothed.y * 0.5 + 0.5) * 100 + "%";
   const g = gyro.gamma !== null ? gyro.gamma.toFixed(1) + "°" : "—";
   const b = gyro.beta  !== null ? gyro.beta.toFixed(1)  + "°" : "—";
-  dbgTxt.textContent = `x:${smoothed.x.toFixed(2)}  y:${smoothed.y.toFixed(2)}  γ:${g}  β:${b}`;
+  // cam.detectMs > 0: lag = ms since last detection completed → measures pipeline age
+  const lagPart = (cam.active && cam.detectMs > 0)
+    ? `  lag:${Math.round(performance.now() - cam.detectMs)}ms`
+    : "";
+  dbgTxt.textContent = `x:${smoothed.x.toFixed(2)}  y:${smoothed.y.toFixed(2)}  γ:${g}  β:${b}  ${fps}fps${lagPart}`;
 }
 
 // ── resize ────────────────────────────────────────────────────────────────
@@ -954,11 +961,28 @@ const objs = buildObjects();
 applyOffAxis(); // initial call so scene isn't blank for first frame
 
 // ── loop ──────────────────────────────────────────────────────────────────
+// Adaptive LERP: camera gets high value (fast response) because we now
+// trigger processFrame on video frame boundaries, not a 33ms timer.
+// Gyro is already filtered by the sensor; smooth more. Touch is in between.
+const LERP_CAM   = 0.50; // ~3 frames to 90% — camera data is already 66-100ms old
+const LERP_GYRO  = 0.12; // ~18 frames to 90% — gyro is noisy, smooth heavily
+const LERP_TOUCH = 0.15; // ~12 frames to 90%
+
 let t = 0;
-const LERP = 0.12;
+let fps = 0, _fpsFrames = 0, _fpsLast = performance.now();
 
 function animate() {
   requestAnimationFrame(animate);
+
+  // FPS counter — averaged over 500ms windows
+  _fpsFrames++;
+  const _now = performance.now();
+  if (_now - _fpsLast >= 500) {
+    fps = Math.round(_fpsFrames * 1000 / (_now - _fpsLast));
+    _fpsFrames = 0;
+    _fpsLast = _now;
+  }
+
   t += 0.004;
 
   objs.center.rotation.y = t * 0.35;
@@ -969,15 +993,20 @@ function animate() {
   objs.far.rotation.y    = t * 0.4;
   objs.vFar.rotation.x   = t * 0.3;
 
-  smoothed.x += (raw.x - smoothed.x) * LERP;
-  smoothed.y += (raw.y - smoothed.y) * LERP;
+  // Adaptive smoothing: camera needs faster response than gyro
+  const lerp = (cam.active && cam.tracking) ? LERP_CAM
+             : gyro.active                  ? LERP_GYRO
+             :                                LERP_TOUCH;
+  smoothed.x += (raw.x - smoothed.x) * lerp;
+  smoothed.y += (raw.y - smoothed.y) * lerp;
 
-  if (cam.active) {
-    const now = performance.now();
-    if (now - cam.lastProcess > 33) { // ~30fps cap
-      processFrame();
-      cam.lastProcess = now;
-    }
+  // Process camera on every NEW video frame (not on a fixed timer).
+  // video.currentTime only advances when the browser decodes a new frame,
+  // so this fires at the camera's actual framerate (typically 30fps) without
+  // polling overhead or skipping fresh frames.
+  if (cam.active && cam.video && cam.video.currentTime !== cam.lastVideoTime) {
+    cam.lastVideoTime = cam.video.currentTime;
+    processFrame();
   }
 
   if (diag.panelOpen) drawDiagram();
