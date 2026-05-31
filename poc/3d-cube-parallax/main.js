@@ -747,7 +747,7 @@ document.getElementById("btn-cam-bar").addEventListener("click", quickCam);
 // by the system are displayed — no invented distances or estimates.
 
 const diag = { panelOpen: false };
-const DIAG_W = 340, DIAG_H = 160;
+const DIAG_W = 244, DIAG_H = 194;
 
 {
   const panel  = document.getElementById("diag-panel");
@@ -800,136 +800,135 @@ function drawDiagram() {
 
   const { halfW } = VP;
   const maxEye = Math.min(halfW * 0.65, 1.5);
-  const eyeX   = smoothed.x * maxEye; // actual current eye X in world units
+  const eyeX   = smoothed.x * maxEye;
 
-  // Z-axis mapping: zMin (back wall) → bottom of canvas, EYE_Z → top
+  // ── Rotated 90°: Z runs HORIZONTAL, X runs VERTICAL ──────────────────────
+  // Horizontal = depth (Z): left = user side (REAL), right = back wall (VIRTUAL)
+  // Vertical   = lateral (X): center = 0, top/bottom = ±halfW
+  // Screen (z=0) is a VERTICAL line — REAL zone left, VIRTUAL zone right
   const zMin   = DEPTH_FAR - 0.5;
   const zMax   = EYE_Z + 0.5;
   const zRange = zMax - zMin;
-  // X-axis mapping: ±halfW with 30% margin
   const xHalf  = halfW * 1.3;
   const xRange = xHalf * 2;
 
-  const wx = (x) => ((x + xHalf) / xRange) * DIAG_W;
-  const wz = (z) => (1 - (z - zMin) / zRange) * DIAG_H;
+  const wd = (z) => (1 - (z - zMin) / zRange) * DIAG_W; // world Z → canvas X
+  const wl = (x) => ((x + xHalf) / xRange) * DIAG_H;    // world X → canvas Y
 
-  const screenY = wz(0);        // z=0 screen plane
-  const backY   = wz(DEPTH_FAR);
-  // Use the same dynamic eyeZ as applyOffAxis() so head moves when user approaches
+  const screenX = wd(0);
+  const backX   = wd(DEPTH_FAR);
+  const nearX   = wd(DEPTH_NEAR);
+  const topY    = wl(-halfW);
+  const botY    = wl(+halfW);
+  const midY    = wl(0);
+
   const currentEyeZ = (cam.active && cam.calibEyeDist > 0)
     ? Math.min(EYE_Z * cam.faceDepth, EYE_Z * 2) : EYE_Z;
-  const eyeZY   = Math.max(3, wz(currentEyeZ)); // clamp to top of canvas
-  const wallL   = wx(-halfW);
-  const wallR   = wx(+halfW);
+  const headCX = Math.max(3, wd(currentEyeZ));
+  const headCY = wl(eyeX);
 
   // Zone fills
   ctx.fillStyle = "rgba(175,182,210,0.055)";
-  ctx.fillRect(0, 0, DIAG_W, screenY);           // real zone (above screen)
+  ctx.fillRect(0, 0, screenX, DIAG_H);                  // REAL zone (left)
   ctx.fillStyle = "rgba(88,108,185,0.07)";
-  ctx.fillRect(0, screenY, DIAG_W, DIAG_H);      // virtual zone (below screen)
+  ctx.fillRect(screenX, 0, DIAG_W - screenX, DIAG_H);   // VIRTUAL zone (right)
 
-  // Room wall bounds (dashed verticals)
+  // Room walls (dashed horizontal lines at ±halfW)
   ctx.setLineDash([3, 4]);
   ctx.strokeStyle = "rgba(100,118,185,0.28)";
   ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(wallL, 0); ctx.lineTo(wallL, DIAG_H); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(wallR, 0); ctx.lineTo(wallR, DIAG_H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, topY); ctx.lineTo(DIAG_W, topY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, botY); ctx.lineTo(DIAG_W, botY); ctx.stroke();
   ctx.setLineDash([]);
 
-  // Back wall
+  // Back wall (vertical line at z=DEPTH_FAR)
   ctx.strokeStyle = "rgba(100,118,185,0.4)";
   ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(wallL, backY); ctx.lineTo(wallR, backY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(backX, topY); ctx.lineTo(backX, botY); ctx.stroke();
 
-  // Screen line (z=0) — the virtual window
+  // Screen line — vertical, bright (z=0)
   ctx.strokeStyle = "rgba(215,220,240,0.7)";
   ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0, screenY); ctx.lineTo(DIAG_W, screenY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(screenX, 0); ctx.lineTo(screenX, DIAG_H); ctx.stroke();
 
-  // Zone + depth labels
+  // Labels
   ctx.font = "8px monospace";
   ctx.fillStyle = "rgba(145,158,205,0.45)";
-  ctx.fillText("REAL", 4, screenY - 5);
-  ctx.fillText("VIRTUAL", 4, screenY + 11);
-  ctx.fillStyle = "rgba(165,175,215,0.35)";
-  ctx.fillText("z=0", wallR + 3, screenY + 4);
-  ctx.fillText(`z=${DEPTH_FAR}`, wallR + 3, backY + 4);
-  ctx.fillText(`z=+${DEPTH_NEAR}`, wallR + 3, wz(DEPTH_NEAR) + 4);
+  ctx.fillText("REAL",    4,           10);
+  ctx.fillText("VIRTUAL", screenX + 3, 10);
+  ctx.fillStyle = "rgba(165,175,215,0.32)";
+  ctx.fillText("z=0",              screenX + 2,  DIAG_H - 3);
+  ctx.fillText(`z=${DEPTH_FAR}`,   backX - 28,   DIAG_H - 3);
+  ctx.fillText(`z=+${DEPTH_NEAR}`, nearX + 2,    DIAG_H - 3);
 
-  // Objects at their world (x, z) — colors match their wireframe in the scene
+  // Scene objects at their (z, x) world positions
   const sceneObjs = [
-    { x: -halfW * 0.4,  z: 2.5,  r: 4.5, color: "rgba(255,138,98,0.88)"  }, // vClose orange
-    { x:  halfW * 0.4,  z: 1.0,  r: 3.5, color: "rgba(178,138,255,0.88)" }, // close purple
-    { x:  0,            z: 0.4,  r: 5,   color: "rgba(128,158,255,0.88)" }, // center blue
-    { x: -halfW * 0.3,  z: -1.5, r: 3.5, color: "rgba(118,218,158,0.88)" }, // far green
-    { x:  halfW * 0.25, z: -1.9, r: 3,   color: "rgba(138,198,255,0.88)" }, // vFar sky
+    { x: -halfW * 0.4,  z: 2.5,  r: 4.5, color: "rgba(255,138,98,0.88)"  },
+    { x:  halfW * 0.4,  z: 1.0,  r: 3.5, color: "rgba(178,138,255,0.88)" },
+    { x:  0,            z: 0.4,  r: 5,   color: "rgba(128,158,255,0.88)" },
+    { x: -halfW * 0.3,  z: -1.5, r: 3.5, color: "rgba(118,218,158,0.88)" },
+    { x:  halfW * 0.25, z: -1.9, r: 3,   color: "rgba(138,198,255,0.88)" },
   ];
   for (const o of sceneObjs) {
     ctx.fillStyle = o.color;
     ctx.beginPath();
-    ctx.arc(wx(o.x), wz(o.z), o.r, 0, Math.PI * 2);
+    ctx.arc(wd(o.z), wl(o.x), o.r, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // Eye / head — positioned at (eyeX, currentEyeZ) in world
-  const headX = wx(eyeX);
-  const headY = eyeZY;
-  const tracking = cam.active && cam.tracking;
-  const noFace   = cam.active && !cam.tracking;
+  // ── Head and gaze ray ─────────────────────────────────────────────────────
+  const tracking    = cam.active && cam.tracking;
+  const noFace      = cam.active && !cam.tracking;
   const headOpacity = tracking ? 1 : (noFace ? 0.25 : 0.55);
 
-  // Gaze ray: from eye → through screen plane (z=0) → back wall (z=DEPTH_FAR).
-  // The ray passes through (0, 0) at z=0 (off-axis keeps screen center fixed).
-  // At z=DEPTH_FAR it diverges to x = eyeX * DEPTH_FAR / currentEyeZ.
-  // This is the critical visual: the ray PIERCES the screen and touches the back wall.
-  const rayBackX = wx(eyeX * DEPTH_FAR / currentEyeZ);
+  // Gaze ray: eye → z=0 screen (at world x=0) → back wall
+  const rayBackY = wl(eyeX * DEPTH_FAR / currentEyeZ);
   ctx.strokeStyle = `rgba(195,208,255,${headOpacity * 0.35})`;
   ctx.lineWidth   = 1;
   ctx.setLineDash([2, 4]);
   ctx.beginPath();
-  ctx.moveTo(headX, headY);
-  ctx.lineTo(wx(0), screenY);  // through screen at z=0
-  ctx.lineTo(rayBackX, backY); // continues to back wall
+  ctx.moveTo(headCX,  headCY);
+  ctx.lineTo(screenX, midY);
+  ctx.lineTo(backX,   rayBackY);
   ctx.stroke();
   ctx.setLineDash([]);
 
   // Screen pierce dot
   ctx.fillStyle = `rgba(195,208,255,${headOpacity * 0.75})`;
   ctx.beginPath();
-  ctx.arc(wx(0), screenY, 2.5, 0, Math.PI * 2);
+  ctx.arc(screenX, midY, 2.5, 0, Math.PI * 2);
   ctx.fill();
 
   // Back wall hit dot
   ctx.fillStyle = `rgba(195,208,255,${headOpacity * 0.4})`;
   ctx.beginPath();
-  ctx.arc(rayBackX, backY, 2, 0, Math.PI * 2);
+  ctx.arc(backX, rayBackY, 2, 0, Math.PI * 2);
   ctx.fill();
 
-  // Head circle fill + stroke
+  // Head circle
   ctx.fillStyle   = `rgba(195,200,220,${headOpacity * 0.13})`;
   ctx.strokeStyle = `rgba(195,200,225,${headOpacity * 0.52})`;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth   = 1.5;
   ctx.beginPath();
-  ctx.arc(headX, headY, 10, 0, Math.PI * 2);
+  ctx.arc(headCX, headCY, 10, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  // Gaze direction indicator inside head circle (uses 30° display scale, informational)
+  // Gaze direction indicator (yaw = left/right → vertical deflection in this view)
   if (tracking && cam.lastYaw !== 0) {
     const yawRad = (-cam.lastYaw / 30) * (Math.PI / 2.2);
     ctx.strokeStyle = "rgba(190,205,255,0.75)";
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth   = 1.5;
     ctx.beginPath();
-    ctx.moveTo(headX, headY);
-    ctx.lineTo(headX + Math.sin(yawRad) * 11, headY + Math.cos(yawRad) * 7);
+    ctx.moveTo(headCX, headCY);
+    ctx.lineTo(headCX + Math.cos(yawRad) * 9, headCY + Math.sin(yawRad) * 7);
     ctx.stroke();
   }
 
-  // "no face" indicator
   if (noFace) {
     ctx.fillStyle = "rgba(255,160,100,0.55)";
     ctx.font = "8px monospace";
-    ctx.fillText("sin cara", headX - 16, headY - 14);
+    ctx.fillText("sin cara", headCX + 12, headCY + 4);
   }
 
   // Stats
