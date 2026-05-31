@@ -77,6 +77,7 @@ const sceneGroup = new THREE.Group();
 scene.add(sceneGroup);
 let sceneLights    = [];
 let sceneAnimFn    = null;
+let sceneTextures  = []; // textures to dispose on scene switch (materials.dispose() skips textures)
 let activeSceneIdx = 0;
 
 function clearScene() {
@@ -90,6 +91,8 @@ function clearScene() {
   sceneGroup.clear();
   sceneLights.forEach(l => scene.remove(l));
   sceneLights = [];
+  sceneTextures.forEach(t => t.dispose());
+  sceneTextures = [];
   sceneAnimFn = null;
 }
 
@@ -361,6 +364,104 @@ function activateScene2() {
     far.rotation.z    = t * 0.22;
     vFar.rotation.y   = t * 0.55;
   };
+
+  updateScenePanel();
+}
+
+function activateScene3() {
+  clearScene();
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  activeSceneIdx = 2;
+
+  const { halfW, halfH } = VP;
+  const floorY = -halfH * 0.72; // ground level
+
+  // 3-step toon gradient: shadow / midtone / highlight
+  const gradData = new Uint8Array([88, 158, 232]);
+  const gradMap  = new THREE.DataTexture(gradData, 3, 1, THREE.RedFormat);
+  gradMap.minFilter = THREE.NearestFilter; // hard steps, no interpolation
+  gradMap.magFilter = THREE.NearestFilter;
+  gradMap.needsUpdate = true;
+  sceneTextures.push(gradMap);
+
+  // Lights
+  const amb = new THREE.AmbientLight(0x0c1018, 1.8);
+  scene.add(amb); sceneLights.push(amb);
+
+  const sun = new THREE.DirectionalLight(0xfff0cc, 5.5);
+  sun.position.set(4, 7, 3);
+  sun.castShadow = true;
+  sun.shadow.camera.near   = 0.5;
+  sun.shadow.camera.far    = 16;
+  sun.shadow.camera.left   = -6;
+  sun.shadow.camera.right  =  6;
+  sun.shadow.camera.top    =  6;
+  sun.shadow.camera.bottom = -6;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.radius = 3;
+  scene.add(sun); sceneLights.push(sun);
+
+  // Building helper — toon mesh + back-face outline in a group
+  function building(x, z, w, h, d, color, emissive = 0x000000) {
+    const geo  = new THREE.BoxGeometry(w, h, d);
+    const mat  = new THREE.MeshToonMaterial({
+      color, gradientMap: gradMap,
+      emissive, emissiveIntensity: 0.35,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    // Outline: scaled-up back-face clone (separate geo to avoid double-dispose issues)
+    const outline = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshBasicMaterial({ color: 0x050810, side: THREE.BackSide })
+    );
+    outline.scale.setScalar(1.045);
+
+    const g = new THREE.Group();
+    g.add(mesh, outline);
+    g.position.set(x, floorY + h / 2, z);
+    return g;
+  }
+
+  // Ground plane (shadow receiver, toon)
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(halfW * 5, DEPTH_SPAN * 3),
+    new THREE.MeshToonMaterial({ color: 0x0a0c1a, gradientMap: gradMap })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.set(0, floorY, (DEPTH_NEAR + DEPTH_FAR) / 2);
+  ground.receiveShadow = true;
+  sceneGroup.add(ground);
+
+  const W = halfW, H = halfH;
+
+  // ── Row 1: foreground z=+2.2, warm tones ─────────────────────────────────
+  sceneGroup.add(building(-W * 0.70, 2.2, W * 0.38, H * 1.10, 0.30, 0xc4882a, 0x664422));
+  sceneGroup.add(building(-W * 0.22, 2.2, W * 0.30, H * 0.72, 0.28, 0xb55a3a, 0x552211));
+  sceneGroup.add(building( W * 0.28, 2.2, W * 0.46, H * 1.55, 0.32, 0xd4a040, 0x665522));
+  sceneGroup.add(building( W * 0.78, 2.2, W * 0.32, H * 0.95, 0.28, 0xe8c870, 0x665533));
+
+  // ── Row 2: near z=+0.8, steel blue ───────────────────────────────────────
+  sceneGroup.add(building(-W * 0.78, 0.8, W * 0.38, H * 0.80, 0.35, 0x445566, 0x223355));
+  sceneGroup.add(building(-W * 0.28, 0.8, W * 0.52, H * 1.28, 0.38, 0x334488, 0x1a2266));
+  sceneGroup.add(building( W * 0.28, 0.8, W * 0.36, H * 0.65, 0.35, 0x556677, 0x334455));
+  sceneGroup.add(building( W * 0.78, 0.8, W * 0.38, H * 1.02, 0.35, 0x3d5068, 0x223355));
+
+  // ── Row 3: back z=-1.3, dark navy ────────────────────────────────────────
+  sceneGroup.add(building(-W * 0.80, -1.3, W * 0.46, H * 0.75, 0.45, 0x1e2d50, 0x181f38));
+  sceneGroup.add(building(-W * 0.25, -1.3, W * 0.60, H * 1.10, 0.48, 0x223366, 0x1a2550));
+  sceneGroup.add(building( W * 0.35, -1.3, W * 0.40, H * 0.60, 0.45, 0x1a2a48, 0x151e35));
+  sceneGroup.add(building( W * 0.82, -1.3, W * 0.44, H * 0.88, 0.45, 0x1e3060, 0x192548));
+
+  // ── Row 4: far silhouette z=-2.1, near-black ─────────────────────────────
+  sceneGroup.add(building(-W * 0.75, -2.1, W * 0.75, H * 0.44, 0.50, 0x0e1428));
+  sceneGroup.add(building( W * 0.05, -2.1, W * 0.90, H * 0.65, 0.52, 0x101830));
+  sceneGroup.add(building( W * 0.85, -2.1, W * 0.60, H * 0.52, 0.50, 0x0d1526));
+
+  sceneAnimFn = null; // static city — parallax alone drives the depth experience
 
   updateScenePanel();
 }
@@ -1154,7 +1255,7 @@ function updateScenePanel() {
   document.querySelectorAll(".scene-item").forEach((btn, idx) => {
     btn.addEventListener("click", () => {
       if (idx === activeSceneIdx) return;
-      idx === 0 ? activateScene1() : activateScene2();
+      [activateScene1, activateScene2, activateScene3][idx]?.();
       scenePanel.classList.remove("open");
     });
   });
