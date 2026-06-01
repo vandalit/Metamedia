@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metamedia — Métricas Globales</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Space+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #070707;
+      --surface: #0f0f0f;
+      --border: #1c1c1c;
+      --text: #f0f0f0;
+      --muted: #484848;
+      --font-mono: 'Space Mono', 'Courier New', monospace;
+      --font-sans: 'Space Grotesk', system-ui, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      padding: 16px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    /* ─── HEADER ──────────────────────────────── */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 20px 0 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .logo {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: clamp(1rem, 3vw, 1.4rem);
+      letter-spacing: 0.06em;
+      color: #fff;
+      line-height: 1;
+    }
+    .logo em { color: #FF0066; font-style: normal; }
+
+    .header-right { text-align: right; }
+
+    .header-sub {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    #clock {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: #00FF88;
+      margin-top: 3px;
+      letter-spacing: 0.05em;
+    }
+
+    /* ─── BENTO GRID ──────────────────────────── */
+    .bento {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-auto-rows: minmax(200px, auto);
+      gap: 10px;
+    }
+
+    @media (min-width: 580px) {
+      .bento { grid-template-columns: repeat(2, 1fr); }
+      .c2 { grid-column: span 2; }
+    }
+
+    @media (min-width: 960px) {
+      .bento { grid-template-columns: repeat(4, 1fr); }
+      .c2 { grid-column: span 2; }
+      .r2 { grid-row: span 2; }
+    }
+
+    /* ─── CARD ────────────────────────────────── */
+    .card {
+      --accent: #FF0066;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--accent);
+      border-radius: 14px;
+      padding: 14px 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+      position: relative;
+      cursor: default;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      animation: cardIn 0.5s ease-out both;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px -8px color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+
+    /* Top glow tint */
+    .card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg,
+        color-mix(in srgb, var(--accent) 6%, transparent) 0%,
+        transparent 45%);
+      pointer-events: none;
+      border-radius: 13px;
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── CARD HEADER ─────────────────────────── */
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .card-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      color: #00FF88;
+      letter-spacing: 0.12em;
+    }
+    .live-badge .dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #00FF88;
+      animation: pulse 1.4s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.25; transform: scale(0.8); }
+    }
+
+    /* ─── ICON VISUALIZATION ──────────────────── */
+    .icon-viz {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1px;
+      align-content: flex-start;
+      overflow: hidden;
+      position: relative;
+      min-height: 70px;
+    }
+
+    /* Fade out at bottom */
+    .icon-viz::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 40px;
+      background: linear-gradient(to bottom,
+        transparent,
+        var(--surface));
+      pointer-events: none;
+    }
+
+    .icon-unit {
+      font-size: 13px;
+      line-height: 1.2;
+      user-select: none;
+    }
+
+    /* Large cards get slightly bigger icons */
+    .r2 .icon-unit { font-size: 15px; }
+
+    /* ─── METRIC BLOCK (brutalista / bolsa) ───── */
+    .metric-block {
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .metric-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .metric-value {
+      font-family: var(--font-mono);
+      font-size: clamp(1.3rem, 4vw, 2rem);
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.04em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric-delta {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.04em;
+    }
+    .d-up   { background: rgba(0,255,136,0.12); color: #00FF88; }
+    .d-down { background: rgba(255,60,60,0.12);  color: #FF5050; }
+    .d-flat { background: rgba(120,120,120,0.1); color: var(--muted); }
+
+    .metric-unit {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 4px;
+    }
+
+    .icon-scale {
+      font-family: var(--font-mono);
+      font-size: 0.52rem;
+      color: var(--muted);
+      margin-top: 6px;
+      opacity: 0.7;
+    }
+
+    /* ─── FOOTER ──────────────────────────────── */
+    footer {
+      margin-top: 18px;
+      padding: 14px 0;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .footer-txt {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    .footer-txt em { color: #FF0066; font-style: normal; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">META<em>MEDIA</em></div>
+    <div class="header-sub" style="margin-top:5px;">Global Metrics Dashboard · stub v0.1</div>
+  </div>
+  <div class="header-right">
+    <div class="header-sub">Actualizado</div>
+    <div id="clock">—</div>
+  </div>
+</header>
+
+<main class="bento" id="bento"></main>
+
+<footer>
+  <span class="footer-txt">Datos aproximados / stub · Solo para prototipado</span>
+  <span class="footer-txt">Fuentes: FAO, ONU, IUCN, SIPRI, Nature 2015, PNAS 2021 · <em>METAMEDIA</em></span>
+</footer>
+
+<script>
+// ─── MOCK DATA ─────────────────────────────────────────────────────────────
+const METRICS = [
+  {
+    id: 'humans',
+    label: 'Humanos en la Tierra',
+    icon: '👤',
+    value: 8_119_000_000,
+    unit: 'personas',
+    color: '#FF0066',
+    unitsPerIcon: 100_000_000,   // 1 icon = 100M → ~81 icons
+    span: 2, tall: true,
+    live: true, liveRate: 4.5,   // net births/sec
+    delta: { dir: 'up',   pct: '+0.87%' },
+    source: 'ONU 2024',
+  },
+  {
+    id: 'cattle',
+    label: 'Bovinos',
+    icon: '🐄',
+    value: 1_008_000_000,
+    unit: 'bovinos',
+    color: '#FF8C00',
+    unitsPerIcon: 15_000_000,
+    delta: { dir: 'down', pct: '−0.3%' },
+    source: 'FAO 2023',
+  },
+  {
+    id: 'pigs',
+    label: 'Cerdos',
+    icon: '🐷',
+    value: 1_070_000_000,
+    unit: 'cerdos',
+    color: '#FF4DA6',
+    unitsPerIcon: 15_000_000,
+    delta: { dir: 'up',   pct: '+0.5%' },
+    source: 'FAO 2023',
+  },
+  {
+    id: 'poultry',
+    label: 'Aves de Corral',
+    icon: '🐔',
+    value: 33_000_000_000,
+    unit: 'aves',
+    color: '#FFD700',
+    unitsPerIcon: 400_000_000,
+    span: 2,
+    delta: { dir: 'up',   pct: '+1.2%' },
+    source: 'FAO 2023',
+  },
+  {
+    id: 'sheep',
+    label: 'Ovinos y Caprinos',
+    icon: '🐑',
+    value: 2_300_000_000,
+    unit: 'ovinos/caprinos',
+    color: '#BBAAFF',
+    unitsPerIcon: 35_000_000,
+    delta: { dir: 'down', pct: '−0.1%' },
+    source: 'FAO 2023',
+  },
+  {
+    id: 'farm',
+    label: 'Total Animales de Granja',
+    multiIcon: true,
+    icons: [
+      { emoji: '🐔', value: 33_000_000_000 },
+      { emoji: '🐄', value: 1_008_000_000 },
+      { emoji: '🐷', value: 1_070_000_000 },
+      { emoji: '🐑', value: 2_300_000_000 },
+      { emoji: '🐐', value: 1_100_000_000 },
+    ],
+    value: 38_478_000_000,
+    unit: 'animales de granja',
+    color: '#00FF88',
+    unitsPerIcon: 400_000_000,
+    delta: { dir: 'up',   pct: '+0.9%' },
+    source: 'FAO 2023',
+  },
+  {
+    id: 'wild-birds',
+    label: 'Aves Salvajes',
+    icon: '🐦',
+    value: 300_000_000_000,
+    unit: 'aves salvajes',
+    color: '#00CFFF',
+    unitsPerIcon: 3_500_000_000,
+    span: 2,
+    delta: { dir: 'down', pct: '−2.1%' },
+    source: 'PNAS 2021',
+  },
+  {
+    id: 'wild-mammals',
+    label: 'Mamíferos Salvajes',
+    icon: '🦁',
+    value: 130_000_000_000,
+    unit: 'mamíferos',
+    color: '#9B59FC',
+    unitsPerIcon: 2_000_000_000,
+    delta: { dir: 'down', pct: '−3.4%' },
+    source: 'WWF 2022',
+  },
+  {
+    id: 'fish',
+    label: 'Peces en Océanos',
+    icon: '🐟',
+    value: 1_000_000_000_000,
+    unit: 'peces',
+    color: '#1E90FF',
+    unitsPerIcon: 14_000_000_000,
+    delta: { dir: 'down', pct: '−1.8%' },
+    source: 'estimado',
+  },
+  {
+    id: 'trees',
+    label: 'Árboles en la Tierra',
+    icon: '🌳',
+    value: 3_040_000_000_000,
+    unit: 'árboles',
+    color: '#00E64D',
+    unitsPerIcon: 35_000_000_000,
+    span: 2,
+    delta: { dir: 'down', pct: '−0.8%' },
+    source: 'Nature 2015',
+  },
+  {
+    id: 'ocean',
+    label: 'Agua en Océanos',
+    icon: '🌊',
+    value: 1_335_000_000,
+    unit: 'km³',
+    color: '#0055FF',
+    unitsPerIcon: 18_000_000,
+    delta: { dir: 'flat', pct: '  0.0%' },
+    source: 'USGS',
+  },
+  {
+    id: 'nuclear',
+    label: 'Ojivas Nucleares',
+    icon: '☢️',
+    value: 12_512,
+    unit: 'ojivas stockpiled',
+    color: '#FFFF00',
+    unitsPerIcon: 180,
+    delta: { dir: 'down', pct: '−0.2%' },
+    source: 'SIPRI 2024',
+  },
+];
+
+// ─── FORMATTERS ────────────────────────────────────────────────────────────
+function fmtShort(n) {
+  if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';
+  if (n >= 1e9)  return (n / 1e9).toFixed(2)  + 'B';
+  if (n >= 1e6)  return (n / 1e6).toFixed(2)  + 'M';
+  if (n >= 1e3)  return (n / 1e3).toFixed(1)  + 'K';
+  return Math.round(n).toLocaleString('es-CL');
+}
+
+function fmtScale(n) {
+  if (n >= 1e12) return (n / 1e12).toFixed(0) + 'T';
+  if (n >= 1e9)  return (n / 1e9).toFixed(0)  + 'B';
+  if (n >= 1e6)  return (n / 1e6).toFixed(0)  + 'M';
+  if (n >= 1e3)  return (n / 1e3).toFixed(0)  + 'K';
+  return n.toString();
+}
+
+// ─── ICON GRID ─────────────────────────────────────────────────────────────
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function buildIcons(metric) {
+  const MAX = 160;
+  const count = Math.min(MAX, Math.max(1, Math.ceil(metric.value / metric.unitsPerIcon)));
+
+  if (metric.multiIcon) {
+    const total = metric.icons.reduce((s, ic) => s + ic.value, 0);
+    const icons = [];
+    let used = 0;
+    metric.icons.forEach((ic, idx) => {
+      const share = idx < metric.icons.length - 1
+        ? Math.round((ic.value / total) * count)
+        : count - used;
+      for (let i = 0; i < Math.max(0, share); i++) icons.push(ic.emoji);
+      used += share;
+    });
+    return shuffle(icons).map(e => `<span class="icon-unit">${e}</span>`).join('');
+  }
+
+  return Array(count).fill(`<span class="icon-unit">${metric.icon}</span>`).join('');
+}
+
+// ─── CARD BUILDER ──────────────────────────────────────────────────────────
+function buildCard(metric, idx) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.cssText = `--accent:${metric.color}; animation-delay:${(idx * 0.055).toFixed(2)}s`;
+  if (metric.span === 2) card.classList.add('c2');
+  if (metric.tall) card.classList.add('r2');
+
+  const dClass = { up: 'd-up', down: 'd-down', flat: 'd-flat' }[metric.delta.dir];
+  const dSym   = { up: '▲', down: '▼', flat: '●' }[metric.delta.dir];
+
+  const iconLabel = metric.multiIcon
+    ? metric.icons.map(i => i.emoji).join('')
+    : metric.icon;
+
+  card.innerHTML = `
+    <div class="card-header">
+      <span class="card-label">${metric.label}</span>
+      ${metric.live ? '<span class="live-badge"><span class="dot"></span>LIVE</span>' : ''}
+    </div>
+    <div class="icon-viz" id="viz-${metric.id}">${buildIcons(metric)}</div>
+    <div class="metric-block">
+      <div class="metric-row">
+        <span class="metric-value"
+              id="val-${metric.id}"
+              data-target="${metric.value}"
+              data-live="${metric.live || false}"
+              data-rate="${metric.liveRate || 0}">0</span>
+        <span class="metric-delta ${dClass}">${dSym} ${metric.delta.pct}</span>
+      </div>
+      <div class="metric-unit">${metric.unit}</div>
+      <div class="icon-scale">
+        1&thinsp;${iconLabel} = ${fmtScale(metric.unitsPerIcon)} &nbsp;·&nbsp; ${metric.source}
+      </div>
+    </div>
+  `;
+  return card;
+}
+
+// ─── COUNTER ANIMATION ─────────────────────────────────────────────────────
+function animateCount(el, target, duration) {
+  const t0 = performance.now();
+  const isLive = el.dataset.live === 'true';
+  const rate   = parseFloat(el.dataset.rate) || 0;
+
+  function tick(now) {
+    const p = Math.min((now - t0) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);               // ease-out cubic
+    el.textContent = fmtShort(target * ease);
+    if (p < 1) {
+      requestAnimationFrame(tick);
+    } else {
+      el.textContent = fmtShort(target);
+      if (isLive) startLive(el, target, rate);
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+function startLive(el, base, rate) {
+  const epoch = performance.now();
+  setInterval(() => {
+    const delta = ((performance.now() - epoch) / 1000) * rate;
+    el.textContent = fmtShort(base + delta);
+  }, 800);
+}
+
+// ─── CLOCK ─────────────────────────────────────────────────────────────────
+function updateClock() {
+  const s = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  document.getElementById('clock').textContent = s + ' UTC';
+}
+
+// ─── INIT ───────────────────────────────────────────────────────────────────
+const bento = document.getElementById('bento');
+METRICS.forEach((m, i) => bento.appendChild(buildCard(m, i)));
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    const el = entry.target.querySelector('[data-target]');
+    if (el && !el._done) {
+      el._done = true;
+      const dur = 1000 + Math.random() * 600;
+      animateCount(el, parseInt(el.dataset.target, 10), dur);
+    }
+  });
+}, { threshold: 0.15 });
+
+document.querySelectorAll('.card').forEach(c => observer.observe(c));
+
+updateClock();
+setInterval(updateClock, 1000);
+</script>
+</body>
+</html>
