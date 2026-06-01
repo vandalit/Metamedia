@@ -22,9 +22,9 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 16px;
-      width: min(640px, 90vw);
+      width: min(720px, 90vw);
     }
-    a.card {
+    .card {
       display: block;
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 6px;
@@ -32,11 +32,12 @@
       text-decoration: none;
       color: inherit;
       transition: border-color 0.2s, background 0.2s;
+      cursor: pointer;
     }
-    a.card:hover { border-color: rgba(100,140,255,0.5); background: rgba(100,140,255,0.05); }
+    .card:hover { border-color: rgba(100,140,255,0.5); background: rgba(100,140,255,0.05); }
     .card-label { font-size: 10px; letter-spacing: 0.2em; opacity: 0.4; margin-bottom: 6px; }
-    .card-title { font-size: 14px; font-weight: bold; }
-    .card-desc { font-size: 11px; opacity: 0.5; margin-top: 4px; line-height: 1.5; }
+    .card-title  { font-size: 14px; font-weight: bold; }
+    .card-desc   { font-size: 11px; opacity: 0.5; margin-top: 4px; line-height: 1.5; }
     .tag {
       display: inline-block;
       font-size: 9px;
@@ -47,13 +48,75 @@
       background: rgba(100,140,255,0.15);
       color: #8aabff;
     }
-    .tag.legacy { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.3); }
+    .tag.legacy  { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.3); }
+    .tag.metrics { background: rgba(255,0,102,0.15);   color: #ff668a; }
+
+    /* Password modal */
+    #pw-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    #pw-overlay.open { display: flex; }
+    #pw-box {
+      background: #0f0f18;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 32px 36px;
+      width: min(340px, 90vw);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    #pw-box p { font-size: 11px; opacity: 0.5; letter-spacing: 0.1em; text-transform: uppercase; }
+    #pw-input {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      padding: 10px 14px;
+      color: #ccd;
+      font-family: monospace;
+      font-size: 14px;
+      outline: none;
+      width: 100%;
+      letter-spacing: 0.1em;
+    }
+    #pw-input:focus { border-color: rgba(100,140,255,0.4); }
+    #pw-input.error { border-color: rgba(255,80,80,0.5); animation: shake 0.3s ease; }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25%      { transform: translateX(-6px); }
+      75%      { transform: translateX(6px); }
+    }
+    #pw-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn {
+      font-family: monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: transparent;
+      color: #ccd;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+    .btn:hover { background: rgba(255,255,255,0.05); }
+    .btn.accent { background: rgba(100,140,255,0.2); border-color: rgba(100,140,255,0.4); color: #8aabff; }
+    .btn.accent:hover { background: rgba(100,140,255,0.3); }
   </style>
 </head>
 <body>
+
   <h1>Metamedia — proyectos.metamedia.cl</h1>
 
   <div class="grid">
+
     <a class="card" href="./poc/3d-cube-parallax/index.html">
       <div class="card-label">POC · FASE 1</div>
       <div class="card-title">3D Cube Parallax</div>
@@ -61,12 +124,71 @@
       <span class="tag">Three.js · activo</span>
     </a>
 
-    <a class="card" href="./web/index.html">
+    <a class="card" href="./metrics-dashboard/index.html">
+      <div class="card-label">STUB · CONCEPTO</div>
+      <div class="card-title">Métricas Globales</div>
+      <div class="card-desc">Dashboard iconográfico del planeta: fauna, océanos, bosques, armamento nuclear.</div>
+      <span class="tag metrics">bento · dopamina</span>
+    </a>
+
+    <div class="card" id="legacy-card">
       <div class="card-label">LEGACY</div>
       <div class="card-title">Iteraciones anteriores</div>
       <div class="card-desc">Templates, tarjetas UX, plan de marketing.</div>
-      <span class="tag legacy">archivo</span>
-    </a>
+      <span class="tag legacy">archivo · acceso restringido</span>
+    </div>
+
   </div>
+
+  <!-- Password modal -->
+  <div id="pw-overlay">
+    <div id="pw-box">
+      <p>Acceso restringido — contraseña</p>
+      <input id="pw-input" type="password" placeholder="••••••••••" autocomplete="off" />
+      <div id="pw-actions">
+        <button class="btn" id="pw-cancel">Cancelar</button>
+        <button class="btn accent" id="pw-ok">Entrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const HASH = '1b19aeea5c9ef8628a34c58e6f5e72e2f4cf9cbf'; // sha1("metamedia")
+
+    async function sha1(str) {
+      const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(str));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    const overlay   = document.getElementById('pw-overlay');
+    const input     = document.getElementById('pw-input');
+    const btnOk     = document.getElementById('pw-ok');
+    const btnCancel = document.getElementById('pw-cancel');
+
+    document.getElementById('legacy-card').addEventListener('click', () => {
+      overlay.classList.add('open');
+      input.value = '';
+      input.classList.remove('error');
+      setTimeout(() => input.focus(), 80);
+    });
+
+    async function tryEnter() {
+      const hash = await sha1(input.value.trim());
+      if (hash === HASH) {
+        overlay.classList.remove('open');
+        window.location.href = './web/index.html';
+      } else {
+        input.classList.add('error');
+        setTimeout(() => input.classList.remove('error'), 400);
+        input.select();
+      }
+    }
+
+    btnOk.addEventListener('click', tryEnter);
+    btnCancel.addEventListener('click', () => overlay.classList.remove('open'));
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') tryEnter(); });
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+  </script>
+
 </body>
 </html>
