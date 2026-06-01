@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>3D Parallax POC</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#000; overflow:hidden; font-family:monospace; color:#fff; touch-action:none; }
+    canvas { display:block; }
+
+    /* ── status bar ── */
+    #bar {
+      position:fixed; top:0; left:0; right:0;
+      display:flex; align-items:center; gap:6px;
+      padding:8px 10px;
+      background:linear-gradient(rgba(0,0,0,.7), transparent);
+      pointer-events:none;
+    }
+    .chip {
+      font-size:10px; letter-spacing:.05em; padding:2px 7px;
+      border-radius:3px;
+      border:1px solid rgba(255,255,255,.15);
+      background:rgba(255,255,255,.06);
+      color:rgba(255,255,255,.4);
+    }
+    .chip.ok  { border-color:rgba(80,220,140,.4);  background:rgba(80,220,140,.1);  color:#7eeaaa; }
+    .chip.bad { border-color:rgba(255,140,60,.4);   background:rgba(255,140,60,.1);  color:#ffb06a; }
+    .chip.dim { opacity:.3; }
+
+    /* ── debug overlay ── */
+    #dbg-panel {
+      position:fixed; bottom:56px; left:0; right:0;
+      display:flex; flex-direction:column; align-items:center;
+      gap:4px; pointer-events:none;
+    }
+    #dbg-vals {
+      font-size:11px; letter-spacing:.04em; color:rgba(255,255,255,.5);
+      background:rgba(0,0,0,.5); padding:5px 12px; border-radius:4px;
+      white-space:pre;
+    }
+    #xy-box {
+      width:60px; height:60px;
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:4px; position:relative; background:rgba(0,0,0,.4);
+    }
+    #xy-dot {
+      position:absolute; width:8px; height:8px; border-radius:50%;
+      background:#6af; transform:translate(-50%,-50%);
+      top:50%; left:50%;
+    }
+
+    /* ── controls ── */
+    #controls {
+      position:fixed; bottom:0; left:0; right:0;
+      display:flex; gap:8px; padding:8px;
+      background:rgba(0,0,0,.5);
+    }
+    button {
+      font-family:monospace; font-size:11px;
+      padding:8px 14px; border-radius:4px; cursor:pointer;
+      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); color:#fff;
+    }
+    button.ok { background:rgba(80,220,140,.12); border-color:rgba(80,220,140,.35); color:#7eeaaa; }
+    button:disabled { opacity:.25; cursor:default; }
+
+    /* ── error display ── */
+    #err {
+      display:none; position:fixed; top:40px; left:10px; right:10px;
+      background:rgba(180,0,0,.9); color:#fff; padding:10px; border-radius:4px;
+      font-size:11px; z-index:999; white-space:pre-wrap; word-break:break-all;
+    }
+
+    /* ── camera panel ── */
+    #cam-panel {
+      position:fixed; top:38px; left:10px; z-index:60;
+      width:176px;
+      border-radius:7px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(8,8,20,.92);
+      backdrop-filter:blur(10px);
+      overflow:hidden;
+      font-family:monospace;
+    }
+    #cam-header {
+      display:flex; align-items:center; gap:6px;
+      padding:6px 10px; cursor:grab; user-select:none;
+    }
+    #cam-header:hover { background:rgba(255,255,255,.05); }
+    #cam-icon { font-size:12px; }
+    #cam-label { font-size:10px; letter-spacing:.06em; flex:1; color:rgba(255,255,255,.6); }
+    #cam-st {
+      font-size:9px; padding:1px 6px; border-radius:3px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06); color:rgba(255,255,255,.35);
+    }
+    #cam-st.ok  { border-color:rgba(80,220,140,.4); background:rgba(80,220,140,.1); color:#7eeaaa; }
+    #cam-st.bad { border-color:rgba(255,140,60,.4);  background:rgba(255,140,60,.1);  color:#ffb06a; }
+    #cam-chevron { font-size:9px; color:rgba(255,255,255,.3); transition:transform .2s; }
+    #cam-panel.open #cam-chevron { transform:rotate(180deg); }
+
+    #cam-body { display:none; border-top:1px solid rgba(255,255,255,.08); }
+    #cam-panel.open #cam-body { display:block; }
+
+    #cam-view {
+      position:relative; width:176px; height:132px; background:#000;
+      overflow:hidden;
+    }
+    #camv {
+      position:absolute; inset:0; width:100%; height:100%;
+      object-fit:cover;
+      transform:scaleX(-1); /* mirror so user sees selfie view */
+    }
+    #camc {
+      position:absolute; inset:0; width:100%; height:100%;
+      transform:scaleX(-1); /* match video mirror */
+      pointer-events:none;
+    }
+    #cam-loading {
+      position:absolute; inset:0; display:flex;
+      align-items:center; justify-content:center;
+      font-size:10px; color:rgba(255,255,255,.4);
+      background:#000;
+    }
+
+    #cam-stats {
+      padding:4px 8px; font-size:10px;
+      color:rgba(255,255,255,.45); min-height:18px;
+      letter-spacing:.03em;
+    }
+    #cam-btns {
+      display:flex; gap:6px; padding:6px 8px 8px;
+    }
+    #cam-btns button {
+      flex:1; font-size:10px; padding:6px 4px;
+    }
+
+    /* ── diagram / spatial panel ── */
+    #diag-panel {
+      position:fixed; top:38px; right:10px; z-index:60;
+      width:244px;
+      border-radius:7px;
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(10,10,20,.95);
+      backdrop-filter:blur(12px);
+      overflow:hidden;
+      font-family:monospace;
+    }
+    #diag-header {
+      display:flex; align-items:center; gap:6px;
+      padding:6px 10px; cursor:grab; user-select:none;
+    }
+    #diag-header:hover { background:rgba(255,255,255,.04); }
+    #diag-icon  { font-size:11px; color:rgba(170,180,220,.7); }
+    #diag-label { font-size:10px; letter-spacing:.06em; flex:1; color:rgba(170,180,220,.6); }
+    #diag-st {
+      font-size:9px; padding:1px 6px; border-radius:3px;
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.05); color:rgba(255,255,255,.3);
+    }
+    #diag-st.live { border-color:rgba(130,160,255,.4); background:rgba(130,160,255,.08); color:#aabeff; }
+    #diag-chevron { font-size:9px; color:rgba(255,255,255,.25); transition:transform .2s; }
+    #diag-panel.open #diag-chevron { transform:rotate(180deg); }
+
+    #diag-body { display:none; border-top:1px solid rgba(255,255,255,.07); }
+    #diag-panel.open #diag-body { display:block; }
+
+    #diagc { display:block; background:#0c0c17; }
+    #diag-stats {
+      padding:4px 8px 6px; font-size:9px; letter-spacing:.03em;
+      color:rgba(160,170,210,.5); min-height:16px;
+      border-top:1px solid rgba(255,255,255,.05);
+    }
+
+    /* ── scene panel ── */
+    #scene-panel {
+      position:fixed; bottom:52px; right:10px;
+      z-index:60; width:200px;
+      border-radius:7px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(10,10,20,.97);
+      backdrop-filter:blur(12px);
+      overflow:hidden; font-family:monospace;
+      display:none;
+    }
+    #scene-panel.open { display:block; }
+    #scene-header {
+      display:flex; align-items:center; gap:7px;
+      padding:7px 10px; user-select:none;
+    }
+    #scene-icon  { font-size:11px; color:rgba(220,200,160,.7); }
+    #scene-label { font-size:10px; letter-spacing:.06em; flex:1; color:rgba(220,200,160,.6); }
+    #scene-num {
+      font-size:9px; padding:1px 6px; border-radius:3px;
+      border:1px solid rgba(220,200,100,.25);
+      background:rgba(220,200,100,.07); color:rgba(220,200,120,.7);
+    }
+    #scene-body {
+      border-top:1px solid rgba(255,255,255,.07);
+      display:flex; flex-direction:column;
+    }
+    .scene-item {
+      display:flex; align-items:center; gap:9px;
+      padding:9px 12px; cursor:pointer; text-align:left;
+      background:transparent; border:none; color:inherit;
+      border-bottom:1px solid rgba(255,255,255,.04);
+    }
+    .scene-item:last-child { border-bottom:none; }
+    .scene-item:hover { background:rgba(255,255,255,.04); }
+    .scene-item.active { background:rgba(220,200,100,.07); }
+    .si-num {
+      font-size:10px; color:rgba(220,200,120,.6);
+      width:12px; flex-shrink:0;
+    }
+    .si-name { font-size:10px; letter-spacing:.04em; color:rgba(255,255,255,.7); flex:1; }
+    .si-hint { font-size:8px; color:rgba(255,255,255,.28); }
+    .scene-item.active .si-name { color:#e0d080; }
+
+    /* ── config panel ── */
+    #cfg-panel {
+      position:fixed; bottom:52px; left:50%; transform:translateX(-50%);
+      z-index:60; width:260px;
+      border-radius:7px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(10,10,20,.97);
+      backdrop-filter:blur(12px);
+      overflow:hidden; font-family:monospace;
+      display:none;
+    }
+    #cfg-panel.open { display:block; }
+    #cfg-header {
+      display:flex; align-items:center; gap:7px;
+      padding:7px 10px; cursor:pointer; user-select:none;
+    }
+    #cfg-header:hover { background:rgba(255,255,255,.04); }
+    #cfg-icon { font-size:11px; color:rgba(180,170,255,.7); }
+    #cfg-label { font-size:10px; letter-spacing:.06em; flex:1; color:rgba(180,170,255,.6); }
+    #cfg-chevron { font-size:9px; color:rgba(255,255,255,.25); transition:transform .2s; }
+    #cfg-panel.open #cfg-chevron { transform:rotate(180deg); }
+    #cfg-body {
+      padding:8px 12px 12px;
+      border-top:1px solid rgba(255,255,255,.07);
+      display:flex; flex-direction:column; gap:9px;
+    }
+    .cfg-row { display:flex; align-items:center; gap:8px; }
+    .cfg-lbl {
+      font-size:9px; letter-spacing:.05em; color:rgba(255,255,255,.38);
+      width:68px; flex-shrink:0;
+    }
+    .cfg-row input[type=range] { flex:1; cursor:pointer; accent-color:#8888ff; height:16px; }
+    .cfg-val {
+      font-size:9px; color:rgba(160,155,255,.8);
+      width:34px; text-align:right; flex-shrink:0;
+    }
+    .cfg-btn {
+      font-family:monospace; font-size:9px; padding:3px 12px;
+      border-radius:3px; cursor:pointer;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.14); color:rgba(255,255,255,.35);
+    }
+    .cfg-btn.on {
+      background:rgba(100,90,255,.15);
+      border-color:rgba(100,90,255,.45); color:#9090ff;
+    }
+
+    /* ── help overlay ── */
+    #help-overlay {
+      display:none;
+      position:fixed; inset:0; z-index:100;
+      background:rgba(0,0,0,.85);
+      align-items:flex-end; justify-content:center;
+    }
+    #help-overlay.show { display:flex; }
+    #help-card {
+      background:#0f0f1e;
+      border:1px solid rgba(255,255,255,.15);
+      border-radius:12px 12px 0 0;
+      padding:24px 20px;
+      width:100%; max-width:480px;
+      display:flex; flex-direction:column; gap:16px;
+    }
+    #help-card h3 {
+      font-size:14px; color:#ffcc66; letter-spacing:.05em;
+    }
+    #help-steps {
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .help-step {
+      display:flex; gap:10px; align-items:flex-start;
+    }
+    .step-num {
+      min-width:20px; height:20px;
+      background:rgba(255,255,255,.1); border-radius:50%;
+      font-size:10px; display:flex; align-items:center; justify-content:center;
+      margin-top:1px; color:rgba(255,255,255,.6);
+    }
+    .step-text { font-size:12px; color:rgba(255,255,255,.7); line-height:1.5; }
+    #help-actions { display:flex; gap:8px; }
+    #help-retry {
+      flex:1; background:rgba(80,140,255,.15);
+      border-color:rgba(80,140,255,.4); color:#88aaff;
+    }
+    #help-touch { flex:1; }
+  </style>
+</head>
+<body>
+
+  <div id="bar">
+    <span class="chip dim" id="c-input">input: —</span>
+    <span class="chip" id="c-gyro">gyro: detectando…</span>
+    <span class="chip dim" id="c-cam">cam: off</span>
+  </div>
+
+  <div id="dbg-panel">
+    <div id="xy-box"><div id="xy-dot"></div></div>
+    <div id="dbg-vals">x:0.00  y:0.00  γ:—  β:—</div>
+  </div>
+
+  <div id="controls">
+    <button id="btn-gyro">Giroscopio</button>
+    <button id="btn-cal" disabled>Calibrar</button>
+    <button id="btn-cam-bar">Cámara</button>
+    <button id="btn-scene"><i class="fas fa-layer-group"></i></button>
+    <button id="btn-cfg"><i class="fas fa-sliders-h"></i></button>
+  </div>
+
+  <div id="err"></div>
+
+  <!-- camera panel — collapsed = bar, open = panel with video + landmarks -->
+  <div id="cam-panel">
+    <div id="cam-header">
+      <i class="fas fa-camera" id="cam-icon"></i>
+      <span id="cam-label">CAM</span>
+      <span id="cam-st">off</span>
+      <i class="fas fa-chevron-down" id="cam-chevron"></i>
+    </div>
+    <div id="cam-body">
+      <div id="cam-view">
+        <video id="camv" autoplay playsinline muted></video>
+        <canvas id="camc"></canvas>
+        <div id="cam-loading">cargando MediaPipe…</div>
+      </div>
+      <div id="cam-stats">—</div>
+      <div id="cam-btns">
+        <button id="btn-cam-on">Activar</button>
+        <button id="btn-cam-cal" disabled>Calibrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- spatial diagram panel — top-down view of the 3D space -->
+  <div id="diag-panel">
+    <div id="diag-header">
+      <i class="fas fa-vector-square" id="diag-icon"></i>
+      <span id="diag-label">SPACE</span>
+      <span id="diag-st">off</span>
+      <i class="fas fa-chevron-down" id="diag-chevron"></i>
+    </div>
+    <div id="diag-body">
+      <canvas id="diagc" width="244" height="194"></canvas>
+      <div id="diag-stats">—</div>
+    </div>
+  </div>
+
+  <!-- scene panel -->
+  <div id="scene-panel">
+    <div id="scene-header">
+      <i class="fas fa-layer-group" id="scene-icon"></i>
+      <span id="scene-label">ESCENA</span>
+      <span id="scene-num">1</span>
+    </div>
+    <div id="scene-body">
+      <button class="scene-item active" data-idx="0">
+        <span class="si-num">1</span>
+        <span class="si-name">Wireframe</span>
+        <span class="si-hint">line art · sin sombras</span>
+      </button>
+      <button class="scene-item" data-idx="1">
+        <span class="si-num">2</span>
+        <span class="si-name">Sombreado</span>
+        <span class="si-hint">PBR · sombras suaves</span>
+      </button>
+      <button class="scene-item" data-idx="2">
+        <span class="si-num">3</span>
+        <span class="si-name">Ciudad</span>
+        <span class="si-hint">cel shading · ciudad</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- config panel -->
+  <div id="cfg-panel">
+    <div id="cfg-header">
+      <i class="fas fa-sliders-h" id="cfg-icon"></i>
+      <span id="cfg-label">CONFIG</span>
+      <i class="fas fa-chevron-down" id="cfg-chevron"></i>
+    </div>
+    <div id="cfg-body">
+      <div class="cfg-row">
+        <label class="cfg-lbl">Parallax</label>
+        <input type="range" id="sl-par" min="30" max="150" value="65" step="5">
+        <span class="cfg-val" id="sl-par-v">65%</span>
+      </div>
+      <div class="cfg-row">
+        <label class="cfg-lbl">FOV</label>
+        <input type="range" id="sl-fov" min="40" max="80" value="55" step="1">
+        <span class="cfg-val" id="sl-fov-v">55°</span>
+      </div>
+      <div class="cfg-row">
+        <label class="cfg-lbl">Suavizado</label>
+        <input type="range" id="sl-lerp" min="5" max="100" value="50" step="5">
+        <span class="cfg-val" id="sl-lerp-v">0.50</span>
+      </div>
+      <div class="cfg-row">
+        <label class="cfg-lbl">Anti-jitter</label>
+        <button id="btn-micro" class="cfg-btn">OFF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- help overlay — content filled by JS based on detected browser/issue -->
+  <div id="help-overlay">
+    <div id="help-card">
+      <h3 id="help-title">—</h3>
+      <div id="help-steps"></div>
+      <div id="help-actions">
+        <button id="help-retry">Reintentar</button>
+        <button id="help-touch">Usar touch</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
