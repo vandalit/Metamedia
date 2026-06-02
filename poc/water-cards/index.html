@@ -122,9 +122,9 @@
     body.light .btn-fs{background:rgba(255,245,230,.70);border-color:rgba(0,0,0,.12);color:rgba(60,45,30,.60)}
 
     /* ── CARD BODY ───────────────────────────────────────────────────────── */
-    .card-body{position:absolute;inset:0;top:43%;padding:10px 10px 14px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+    .card-body{position:absolute;inset:0;top:43%;padding:10px 10px 14px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;z-index:2;background:transparent}
     .card-body::-webkit-scrollbar{display:none}
-    .cb-d,.cb-l{position:absolute;inset:0;pointer-events:none;transition:opacity .40s ease}
+    .cb-d,.cb-l{position:absolute;top:43%;left:0;right:0;bottom:0;pointer-events:none;transition:opacity .40s ease;z-index:1}
     .cb-d{background:linear-gradient(180deg,rgba(2,10,25,.97) 0%,rgba(1,6,16,.99) 100%)}
     .cb-l{opacity:0;background:linear-gradient(180deg,rgba(252,250,247,.97) 0%,rgba(248,244,238,.99) 100%)}
     body.light .cb-d{opacity:0} body.light .cb-l{opacity:1}
@@ -328,9 +328,11 @@
       </div>
     </div>
 
+    <!-- BG layers (outside scroll container) -->
+    <div class="cb-d"></div><div class="cb-l"></div>
+
     <!-- BODY -->
     <div class="card-body">
-      <div class="cb-d"></div><div class="cb-l"></div>
       <div class="bento-grid">
 
         <div class="sect"><span>Estructura</span></div>
