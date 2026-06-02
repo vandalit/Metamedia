@@ -393,43 +393,43 @@ function activateScene3() {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   activeSceneIdx = 2;
 
-  // Toon gradient: 3 hard tonal steps (NearestFilter = no interpolation)
+  const { halfW, halfH } = VP;
+
+  // Toon gradient: 3 hard tonal steps
   const gradData = new Uint8Array([82, 152, 228]);
   const gradMap  = new THREE.DataTexture(gradData, 3, 1, THREE.RedFormat);
-  gradMap.minFilter = THREE.NearestFilter;
-  gradMap.magFilter = THREE.NearestFilter;
+  gradMap.minFilter = gradMap.magFilter = THREE.NearestFilter;
   gradMap.needsUpdate = true;
   sceneTextures.push(gradMap);
 
-  // Lights — overhead sun casts building shadows on ground (visible in drone view)
-  const amb = new THREE.AmbientLight(0x0e1424, 2.8);
+  // Lights — afternoon sun from upper-left, strong overhead component
+  const amb = new THREE.AmbientLight(0x131a2e, 2.8);
   scene.add(amb); sceneLights.push(amb);
-  const sun = new THREE.DirectionalLight(0xfff4dd, 5.2);
-  sun.position.set(3, 8, 2);
+  const sun = new THREE.DirectionalLight(0xffeedd, 5.5);
+  sun.position.set(2, 8, 1.5);
   sun.castShadow = true;
   sun.shadow.camera.near   = 0.1;
   sun.shadow.camera.far    = 30;
   sun.shadow.camera.left   = -8; sun.shadow.camera.right  = 8;
   sun.shadow.camera.top    =  8; sun.shadow.camera.bottom = -8;
   sun.shadow.mapSize.set(1024, 1024);
-  sun.shadow.radius = 2;
+  sun.shadow.radius = 3;
   scene.add(sun); sceneLights.push(sun);
 
-  // City group tilted for drone / bird's-eye view
-  // rotation.x = -60° → local +Y (building height) projects into world -Z (depth);
-  // local +Z (city depth) projects into world +Y (screen up).
+  // City group: POSITIVE rotation.x ≈ +68° → local +Y (building height) maps to
+  // world +Z (toward camera). Taller buildings are closer → correct parallax depth.
+  // City floor lies flat like a table; we look down at it from above (maquette view).
   const cityGroup = new THREE.Group();
-  cityGroup.rotation.x = -Math.PI / 3; // -60°
+  cityGroup.rotation.x = Math.PI * 0.38;   // +68° — helicopter / table-top view
+  cityGroup.position.y = -halfH * 0.22;    // shift below screen centre: looking down
   sceneGroup.add(cityGroup);
 
-  // Deterministic hash — same seed = same city every time
-  const hash = (n) => Math.abs(Math.sin(n * 127.1 + 311.7) * 43758.5453) % 1;
+  const hash  = (n) => Math.abs(Math.sin(n * 127.1 + 311.7) * 43758.5453) % 1;
+  const hash2 = (n) => Math.abs(Math.sin(n * 269.3 + 183.1) * 98765.4321) % 1;
 
-  // Grid parameters
-  const COLS = 9, ROWS = 13;
-  const BLOCK = 0.36, STREET = 0.10, AVENUE = 0.22, AVE_EVERY = 3;
+  const COLS = 11, ROWS = 11;
+  const BLOCK = 0.34, STREET = 0.09, AVENUE = 0.20, AVE_EVERY = 3;
 
-  // Precompute centred axis positions with variable street/avenue gaps
   function axisPos(count) {
     const pos = []; let cur = 0;
     for (let i = 0; i < count; i++) {
@@ -443,40 +443,85 @@ function activateScene3() {
   const ax = axisPos(COLS);
   const az = axisPos(ROWS);
 
-  // Ground — dark asphalt, receives building shadows
+  // Ground — dark asphalt
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(ax.total + 0.5, az.total + 0.5),
-    new THREE.MeshToonMaterial({ color: 0x0e0f1a, gradientMap: gradMap })
+    new THREE.PlaneGeometry(ax.total + 0.4, az.total + 0.4),
+    new THREE.MeshToonMaterial({ color: 0x0d0f1c, gradientMap: gradMap })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   cityGroup.add(ground);
 
-  // Street grid overlay (slightly elevated XZ plane, thin lines via LineSegments)
+  // Street grid overlay
   {
     const pts = [];
     for (const x of ax.pos) {
-      pts.push(new THREE.Vector3(x - BLOCK / 2, 0.003, -az.total / 2));
-      pts.push(new THREE.Vector3(x - BLOCK / 2, 0.003,  az.total / 2));
+      pts.push(new THREE.Vector3(x - BLOCK / 2, 0.003, -az.total / 2),
+               new THREE.Vector3(x - BLOCK / 2, 0.003,  az.total / 2));
     }
-    pts.push(new THREE.Vector3(ax.total / 2, 0.003, -az.total / 2));
-    pts.push(new THREE.Vector3(ax.total / 2, 0.003,  az.total / 2));
+    pts.push(new THREE.Vector3(ax.total / 2, 0.003, -az.total / 2),
+             new THREE.Vector3(ax.total / 2, 0.003,  az.total / 2));
     for (const z of az.pos) {
-      pts.push(new THREE.Vector3(-ax.total / 2, 0.003, z - BLOCK / 2));
-      pts.push(new THREE.Vector3( ax.total / 2, 0.003, z - BLOCK / 2));
+      pts.push(new THREE.Vector3(-ax.total / 2, 0.003, z - BLOCK / 2),
+               new THREE.Vector3( ax.total / 2, 0.003, z - BLOCK / 2));
     }
-    pts.push(new THREE.Vector3(-ax.total / 2, 0.003,  az.total / 2));
-    pts.push(new THREE.Vector3( ax.total / 2, 0.003,  az.total / 2));
+    pts.push(new THREE.Vector3(-ax.total / 2, 0.003,  az.total / 2),
+             new THREE.Vector3( ax.total / 2, 0.003,  az.total / 2));
     cityGroup.add(new THREE.LineSegments(
       new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineBasicMaterial({ color: 0x1a1e2e, transparent: true, opacity: 0.7 })
+      new THREE.LineBasicMaterial({ color: 0x1e2438, transparent: true, opacity: 0.75 })
     ));
   }
 
-  // Building placement
+  // Special blocks: central plaza + scattered parks
+  const specialBlocks = new Set();
+  const midC = Math.floor(COLS / 2), midR = Math.floor(ROWS / 2);
+
+  // Central 3×3 plaza
+  for (let dc = -1; dc <= 1; dc++) {
+    for (let dr = -1; dr <= 1; dr++) specialBlocks.add(`${midC + dc},${midR + dr}`);
+  }
+  const plazaW = BLOCK * 3 + STREET * 2;
+  const plaza = new THREE.Mesh(
+    new THREE.PlaneGeometry(plazaW, plazaW),
+    new THREE.MeshToonMaterial({ color: 0x1c1c2c, gradientMap: gradMap })
+  );
+  plaza.rotation.x = -Math.PI / 2;
+  plaza.position.set(0, 0.002, 0);
+  plaza.receiveShadow = true;
+  cityGroup.add(plaza);
+
+  // Park blocks in residential / outskirts zones
   for (let col = 0; col < COLS; col++) {
     for (let row = 0; row < ROWS; row++) {
-      // Normalised distance from city centre (0 = CBD, 1 = corner)
+      if (specialBlocks.has(`${col},${row}`)) continue;
+      const cx = (col / (COLS - 1)) * 2 - 1;
+      const cz = (row / (ROWS - 1)) * 2 - 1;
+      const dist = Math.min(Math.sqrt(cx * cx + cz * cz) / Math.SQRT2, 1);
+      const chance = dist < 0.28 ? 0 : dist < 0.48 ? 0.06 : dist < 0.68 ? 0.13 : 0.22;
+      if (hash2(col * 41 + row * 19 + 7) < chance) {
+        specialBlocks.add(`${col},${row}`);
+        const park = new THREE.Mesh(
+          new THREE.PlaneGeometry(BLOCK * 0.96, BLOCK * 0.96),
+          new THREE.MeshToonMaterial({ color: 0x14281a, gradientMap: gradMap })
+        );
+        park.rotation.x = -Math.PI / 2;
+        park.position.set(ax.pos[col], 0.003, az.pos[row]);
+        park.receiveShadow = true;
+        cityGroup.add(park);
+      }
+    }
+  }
+
+  // Height cap: local +Y → world Z via sin(68°) ≈ 0.927. Cap at DEPTH_NEAR=3.0.
+  const SIN_TILT = Math.sin(Math.PI * 0.38);
+  const MAX_H    = (DEPTH_NEAR - 0.15) / SIN_TILT;  // ≈ 3.07 wu
+
+  // Buildings
+  for (let col = 0; col < COLS; col++) {
+    for (let row = 0; row < ROWS; row++) {
+      if (specialBlocks.has(`${col},${row}`)) continue;
+
       const cx = (col / (COLS - 1)) * 2 - 1;
       const cz = (row / (ROWS - 1)) * 2 - 1;
       const dist = Math.min(Math.sqrt(cx * cx + cz * cz) / Math.SQRT2, 1);
@@ -484,53 +529,56 @@ function activateScene3() {
       const h0 = hash(col * 31 + row * 17 + 5);
       const h1 = hash(col * 53 + row * 7  + 11);
       const h2 = hash(col * 97 + row * 23 + 3);
+      const h3 = hash(col * 71 + row * 43 + 13);
 
-      // Occasional vacant lot or park — more frequent on outskirts
-      if (h2 < (dist > 0.55 ? 0.18 : 0.04)) continue;
+      // Vacant lots (rare in CBD, more common at outskirts)
+      if (h2 < (dist > 0.65 ? 0.14 : dist > 0.45 ? 0.06 : 0.02)) continue;
 
-      // Height by zone — capped so building tops stay within camera far plane
-      // (with -60° tilt, max h where world_z = h * sin(60°) ≤ 2.5 → h ≤ 2.89)
+      // Zone heights — strongly stratified so the silhouette reads clearly
       let height;
-      if (dist < 0.14)       height = 2.0 + h0 * 0.85;   // CBD skyscraper: 2.0–2.85
-      else if (dist < 0.28)  height = 1.0 + h0 * 1.0;    // high-rise commercial: 1.0–2.0
-      else if (dist < 0.45)  height = 0.5 + h0 * 0.7;    // mixed-use: 0.5–1.2
-      else if (dist < 0.65)  height = 0.22 + h0 * 0.45;  // residential: 0.22–0.67
-      else                   height = 0.12 + h0 * 0.25;  // low / outskirts: 0.12–0.37
+      if      (dist < 0.12)  height = 2.6 + h0 * 0.5;    // CBD core: 2.6–3.1
+      else if (dist < 0.26)  height = 1.4 + h0 * 1.0;    // CBD ring: 1.4–2.4
+      else if (dist < 0.42)  height = 0.60 + h0 * 0.65;  // commercial: 0.60–1.25
+      else if (dist < 0.60)  height = 0.22 + h0 * 0.30;  // residential: 0.22–0.52
+      else                   height = 0.08 + h0 * 0.16;  // outskirts: 0.08–0.24
 
-      // Sporadic tall outlier in commercial ring (landmark buildings)
-      if (dist > 0.22 && dist < 0.38 && h1 > 0.90) height = Math.min(height * 2.2, 2.8);
+      // Landmark towers in commercial ring
+      if (dist > 0.20 && dist < 0.37 && h1 > 0.87) height = Math.min(height * 2.6, MAX_H * 0.95);
 
-      // Colour by zone (HSL)
+      height = Math.min(height, MAX_H);
+
+      // Zone colour
       let color, emissive;
       if (dist < 0.15) {
-        color    = new THREE.Color().setHSL(0.60, 0.40, 0.35 + h0 * 0.15); // blue glass
-        emissive = new THREE.Color().setHSL(0.62, 0.55, 0.04 + h1 * 0.05);
+        color    = new THREE.Color().setHSL(0.60, 0.45, 0.28 + h0 * 0.20);
+        emissive = new THREE.Color().setHSL(0.62, 0.60, 0.03 + h1 * 0.07);
       } else if (dist < 0.30) {
-        color    = new THREE.Color().setHSL(0.57, 0.25, 0.40 + h0 * 0.14);
-        emissive = new THREE.Color().setHSL(0.60, 0.40, 0.03 + h1 * 0.04);
+        color    = new THREE.Color().setHSL(0.57, 0.28, 0.35 + h0 * 0.18);
+        emissive = new THREE.Color().setHSL(0.60, 0.40, 0.02 + h1 * 0.05);
       } else if (dist < 0.50) {
-        color    = new THREE.Color().setHSL(0.09, 0.22, 0.44 + h0 * 0.14); // warm concrete
-        emissive = new THREE.Color().setHSL(0.10, 0.30, 0.02 + h1 * 0.03);
+        color    = new THREE.Color().setHSL(0.09, 0.24, 0.36 + h0 * 0.17);
+        emissive = new THREE.Color().setHSL(0.10, 0.28, 0.01 + h1 * 0.03);
       } else {
-        color    = new THREE.Color().setHSL(0.07, 0.15, 0.40 + h0 * 0.12); // beige/brick
-        emissive = new THREE.Color().setHSL(0.08, 0.20, 0.01 + h1 * 0.02);
+        color    = new THREE.Color().setHSL(0.07, 0.16, 0.32 + h0 * 0.16);
+        emissive = new THREE.Color().setHSL(0.08, 0.18, 0.01 + h1 * 0.02);
       }
 
-      const bw  = BLOCK * 0.86;
-      const geo = new THREE.BoxGeometry(bw, height, bw);
-      const mat = new THREE.MeshToonMaterial({ color, gradientMap: gradMap, emissive, emissiveIntensity: 0.35 });
+      // Varied footprint — not every building the same square
+      const bwX = BLOCK * (0.70 + h0 * 0.22);
+      const bwZ = BLOCK * (0.70 + h3 * 0.22);
+      const geo = new THREE.BoxGeometry(bwX, height, bwZ);
+      const mat = new THREE.MeshToonMaterial({ color, gradientMap: gradMap, emissive, emissiveIntensity: 0.30 });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(ax.pos[col], height / 2, az.pos[row]);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
 
-      // Back-face ink outline (skip tiny residential — performance + readability)
-      if (height > 0.28) {
+      if (height > 0.22) {
         const outline = new THREE.Mesh(
-          new THREE.BoxGeometry(bw, height, bw),
+          new THREE.BoxGeometry(bwX, height, bwZ),
           new THREE.MeshBasicMaterial({ color: 0x03050c, side: THREE.BackSide })
         );
-        outline.scale.setScalar(1.06);
+        outline.scale.setScalar(1.055);
         mesh.add(outline);
       }
 
@@ -538,23 +586,21 @@ function activateScene3() {
     }
   }
 
-  // Diagram representation: sample world-Z of building tops across the city
-  // With -60° tilt: world_z = local_z * cos60 - local_y * sin60 = lz*0.5 - h*0.866
+  // Diagram: with +68° tilt, building top (local h) → world z = h * sin(68°) ≈ 0.927h
+  // CBD tops near DEPTH_NEAR (≈2.8), outskirts near z=0
   const W3 = VP.halfW;
   sceneDiagObjs = [
-    { x: -W3 * 0.55, z:  1.2, r: 2, color: "rgba(175,158,132,0.65)" }, // near, low
-    { x:  W3 * 0.40, z:  0.9, r: 2, color: "rgba(175,158,132,0.65)" },
-    { x: -W3 * 0.25, z:  0.3, r: 2.5, color: "rgba(130,155,185,0.72)" }, // mid commercial
-    { x:  W3 * 0.50, z:  0.1, r: 2.5, color: "rgba(130,155,185,0.72)" },
-    { x:  W3 * 0.15, z: -0.8, r: 3.5, color: "rgba(100,130,220,0.82)" }, // CBD tops
-    { x: -W3 * 0.05, z: -1.4, r: 4,   color: "rgba(100,130,220,0.85)" },
-    { x:  W3 * 0.10, z: -2.0, r: 3.5, color: "rgba(110,140,230,0.80)" },
-    { x: -W3 * 0.30, z: -1.2, r: 2.5, color: "rgba(115,135,175,0.65)" }, // far residential
-    { x:  W3 * 0.45, z: -0.9, r: 2,   color: "rgba(115,135,175,0.65)" },
+    { x:  0,          z: 2.6,  r: 5,   color: "rgba(88,118,215,0.90)"  },
+    { x: -W3 * 0.28,  z: 1.9,  r: 3.5, color: "rgba(108,138,200,0.78)" },
+    { x:  W3 * 0.28,  z: 1.9,  r: 3.5, color: "rgba(108,138,200,0.78)" },
+    { x: -W3 * 0.52,  z: 0.9,  r: 2.5, color: "rgba(155,145,125,0.68)" },
+    { x:  W3 * 0.52,  z: 0.9,  r: 2.5, color: "rgba(155,145,125,0.68)" },
+    { x: -W3 * 0.75,  z: 0.2,  r: 1.8, color: "rgba(140,128,108,0.55)" },
+    { x:  W3 * 0.75,  z: 0.2,  r: 1.8, color: "rgba(140,128,108,0.55)" },
+    { x:  0,          z: -0.3, r: 1.4, color: "rgba(130,118,98,0.42)"  },
   ];
 
-  sceneAnimFn = null; // static — head movement IS the motion
-
+  sceneAnimFn = null;
   updateScenePanel();
 }
 
