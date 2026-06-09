@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-  <title>H₂O · Water Card</title>
+  <title>Cards · Metamedia</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -68,7 +68,7 @@
       position:relative;width:min(375px,92vw);height:min(720px,93vh);
       border-radius:26px;transform-style:preserve-3d;overflow:hidden;will-change:transform;
       transform:rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg));
-      transition:transform .07s ease-out;
+      transition:transform .07s ease-out,opacity .25s ease;
       background:var(--card);
       box-shadow:0 40px 90px rgba(0,0,0,.65),0 0 0 .5px rgba(80,180,255,.10)}
     body.light .card{box-shadow:0 28px 65px rgba(80,50,20,.18),0 6px 18px rgba(80,50,20,.10),0 0 0 .5px rgba(0,0,0,.07)}
@@ -79,19 +79,14 @@
     /* ── BANNER ──────────────────────────────────────────────────────────── */
     .banner{position:absolute;top:0;left:0;right:0;height:43%;border-radius:26px 26px 0 0;overflow:hidden}
     .banner-ocean{position:absolute;inset:0;
-      background-image:url('https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=900&q=80');
       background-size:cover;background-position:50% 42%;transform:scale(1.07);
-      transition:background-position .12s ease,filter .40s ease;filter:saturate(1.2) brightness(.88)}
-    body.light .banner-ocean{filter:saturate(.9) brightness(1.05)}
+      transition:background-position .12s ease,filter .40s ease,background-image .40s ease;filter:saturate(1.2) brightness(.88)}
     .banner-blend{position:absolute;inset:0;mix-blend-mode:color;transition:background .40s ease;background:rgba(0,70,200,.28)}
-    body.light .banner-blend{background:rgba(200,110,30,.20)}
     .banner-grad{position:absolute;inset:0;background:linear-gradient(175deg,rgba(0,18,55,.12) 0%,rgba(2,8,28,.68) 58%,rgba(1,5,16,.96) 100%);transition:background .40s ease}
-    body.light .banner-grad{background:linear-gradient(175deg,rgba(170,95,25,.10) 0%,rgba(32,14,3,.55) 56%,rgba(14,5,1,.92) 100%)}
     .banner-frost{position:absolute;top:0;left:0;right:0;height:52%;
       backdrop-filter:blur(4px) saturate(160%);-webkit-backdrop-filter:blur(4px) saturate(160%);
       background:linear-gradient(135deg,rgba(80,160,255,.13) 0%,rgba(20,80,200,.05) 60%,rgba(0,200,255,.03) 100%);
       border-bottom:1px solid rgba(80,180,255,.11);transition:background .40s,border-color .40s}
-    body.light .banner-frost{background:linear-gradient(135deg,rgba(255,215,155,.20) 0%,rgba(215,155,75,.07) 60%,rgba(255,195,95,.03) 100%);border-bottom-color:rgba(195,145,75,.13)}
     .banner-sheen{position:absolute;inset:0;pointer-events:none;
       background:linear-gradient(110deg,transparent 25%,var(--sheen-a) 43%,var(--sheen-b) 50%,var(--sheen-a) 57%,transparent 75%);
       animation:sheen 7s ease-in-out infinite}
@@ -107,7 +102,6 @@
     .banner-tag{font-size:8px;font-weight:600;letter-spacing:.17em;text-transform:uppercase;color:var(--acc);opacity:.75;margin-bottom:3px;transition:color .35s}
     .banner-formula{font-family:'Inter',monospace;font-size:50px;font-weight:900;letter-spacing:-2px;line-height:1;color:#e8f4fd;
       text-shadow:0 0 50px rgba(34,211,238,.42),0 2px 6px rgba(0,0,0,.55)}
-    body.light .banner-formula{text-shadow:0 0 40px rgba(220,145,55,.38),0 2px 6px rgba(0,0,0,.55)}
     .banner-formula sub{font-size:22px;font-weight:700;position:relative;top:5px}
     .banner-name{margin-top:3px;font-size:11px;font-weight:300;letter-spacing:.07em;color:rgba(185,220,255,.62)}
 
@@ -149,25 +143,21 @@
     body.light .bento:hover{transform:translateY(-2px) scale(1);box-shadow:0 8px 20px rgba(0,0,0,.10),0 3px 7px rgba(0,0,0,.07)}
     body.light .bento:active{transform:scale(.97)}
 
-    /* per-bento color dot */
     .bento::after{content:'';position:absolute;top:7px;right:7px;
       width:4px;height:4px;border-radius:50%;
       background:var(--col,#22d3ee);box-shadow:0 0 6px var(--col,#22d3ee);opacity:.50}
     body.light .bento::after{box-shadow:none;opacity:.35}
 
-    /* icon */
     .bento-icon{display:flex;align-items:center;justify-content:center;width:28px;height:28px}
     .bento-icon svg{width:22px;height:22px;stroke:var(--col,#22d3ee);stroke-width:1.6;fill:none;transition:stroke .2s}
     body.light .bento-icon svg{stroke:#374151}
     body.light .bento:hover .bento-icon svg{stroke:var(--col,#374151)}
 
-    /* label */
     .b-lbl{font-size:7px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
       color:var(--t3);text-align:center;line-height:1.25;transition:color .35s}
     .bento.wide .b-lbl{font-size:8px;color:var(--t2);text-align:left;text-transform:none;letter-spacing:.04em;font-weight:400}
     .bento.wide .b-title{font-size:11px;font-weight:700;color:var(--t1);transition:color .35s}
 
-    /* section divider */
     .sect{grid-column:span 3;display:flex;align-items:center;gap:7px;padding:5px 1px 1px}
     .sect span{font-size:6.5px;font-weight:700;letter-spacing:.20em;text-transform:uppercase;color:var(--t3);white-space:nowrap;transition:color .35s}
     .sect::after{content:'';flex:1;height:1px;background:var(--sect-line);transition:background .35s}
@@ -198,7 +188,6 @@
     .modal-tag{font-size:7.5px;font-weight:700;letter-spacing:.20em;text-transform:uppercase;color:var(--mtag);margin-bottom:4px;transition:color .35s}
     .modal-title{font-size:20px;font-weight:700;color:var(--t1);margin-bottom:12px;transition:color .35s}
 
-    /* tabs */
     .modal-tabs{display:flex;gap:4px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
     .modal-tabs::-webkit-scrollbar{display:none}
     .tab-btn{flex-shrink:0;padding:5px 11px;border-radius:8px;font-size:9.5px;font-weight:600;
@@ -209,7 +198,6 @@
     .tab-btn:hover:not(.active){color:var(--t2)}
     .modal-content{min-height:60px}
 
-    /* inside modal content */
     .mstats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
     .mstat{padding:8px 10px;border-radius:10px;background:var(--mstat);border:1px solid var(--mstat-bd);transition:background .35s,border-color .35s}
     .ms-l{font-size:7px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:2px;transition:color .35s}
@@ -218,12 +206,10 @@
     .mdesc{font-size:12px;line-height:1.75;color:var(--t2);transition:color .35s}
     .mdesc + .mdesc{margin-top:8px}
 
-    /* illustrations */
     .il-wrap{border-radius:12px;overflow:hidden;margin-bottom:12px;background:rgba(8,20,50,.40);border:1px solid rgba(40,120,255,.10)}
     body.light .il-wrap{background:rgba(240,235,225,.70);border-color:rgba(0,0,0,.06)}
     .il-wrap svg{display:block;width:100%}
 
-    /* timeline */
     .timeline{display:flex;flex-direction:column;gap:0}
     .tl-item{display:flex;gap:10px;padding:8px 0;border-left:1.5px solid var(--sect-line);margin-left:8px;padding-left:14px;position:relative}
     .tl-item::before{content:'';position:absolute;left:-4px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--acc);box-shadow:0 0 6px var(--acc)}
@@ -232,7 +218,6 @@
     .tl-t{font-size:11px;font-weight:600;color:var(--t1);margin-bottom:2px;transition:color .35s}
     .tl-d{font-size:10px;color:var(--t2);line-height:1.45;transition:color .35s}
 
-    /* comparison bars */
     .cmp-bars{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
     .cbar{display:flex;align-items:center;gap:8px}
     .cbar-label{font-size:9px;color:var(--t2);min-width:80px;transition:color .35s}
@@ -241,14 +226,13 @@
     .cbar-fill{height:100%;border-radius:3px;transition:width .6s ease}
     .cbar-val{font-size:9px;font-weight:600;color:var(--t1);min-width:50px;text-align:right;transition:color .35s}
 
-    /* crisis stat cards */
     .crisis-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
     .crisis-card{padding:10px;border-radius:10px;background:var(--mstat);border:1px solid var(--mstat-bd);text-align:center}
     .crisis-n{font-size:20px;font-weight:800;color:var(--t1);line-height:1;transition:color .35s}
     .crisis-l{font-size:8px;color:var(--t3);margin-top:3px;line-height:1.35;transition:color .35s}
 
     /* ── UI BUTTONS ──────────────────────────────────────────────────────── */
-    .theme-toggle,.btn-fullscreen{
+    .theme-toggle,.btn-fullscreen,.btn-cards{
       position:fixed;z-index:300;bottom:14px;
       width:38px;height:38px;border-radius:50%;
       display:flex;align-items:center;justify-content:center;
@@ -259,9 +243,10 @@
       transition:background .35s,border-color .35s,transform .12s,color .35s}
     .theme-toggle{right:14px}
     .btn-fullscreen{right:60px}
-    .theme-toggle svg,.btn-fullscreen svg{width:16px;height:16px;stroke:currentColor;stroke-width:1.8;fill:none}
-    .theme-toggle:hover,.btn-fullscreen:hover{transform:scale(1.09)}
-    .theme-toggle:active,.btn-fullscreen:active{transform:scale(.87)}
+    .btn-cards{right:106px;border-radius:19px;width:auto;padding:0 13px;gap:6px;font-size:9px;font-weight:700;letter-spacing:.10em;text-transform:uppercase}
+    .theme-toggle svg,.btn-fullscreen svg,.btn-cards svg{width:16px;height:16px;stroke:currentColor;stroke-width:1.8;fill:none}
+    .theme-toggle:hover,.btn-fullscreen:hover,.btn-cards:hover{transform:scale(1.05)}
+    .theme-toggle:active,.btn-fullscreen:active,.btn-cards:active{transform:scale(.87)}
     .theme-toggle.pop{animation:tpop .38s ease forwards}
     @keyframes tpop{0%{transform:scale(.87)}55%{transform:scale(1.18)}100%{transform:scale(1)}}
     .theme-toggle.spin .tog-icon{animation:tspin .40s ease forwards}
@@ -277,6 +262,57 @@
     .gyro-dot{width:5px;height:5px;border-radius:50%;background:var(--acc);
       animation:gpulse 2.5s ease-in-out infinite;transition:background .35s}
     @keyframes gpulse{0%,100%{opacity:.38;box-shadow:none}50%{opacity:1;box-shadow:0 0 6px var(--acc)}}
+
+    /* ── CARDS PANEL ─────────────────────────────────────────────────────── */
+    .cards-overlay{position:fixed;inset:0;z-index:500;
+      background:rgba(0,6,20,.75);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
+      opacity:0;pointer-events:none;transition:opacity .22s ease;
+      display:flex;align-items:flex-end}
+    body.light .cards-overlay{background:rgba(60,35,10,.42)}
+    .cards-overlay.open{opacity:1;pointer-events:all}
+    .cards-sheet{position:relative;width:100%;
+      background:var(--modal);border:1px solid var(--modal-bd);border-bottom:none;
+      border-radius:22px 22px 0 0;padding:16px 16px 40px;
+      transform:translateY(100%);
+      transition:transform .30s cubic-bezier(.32,.72,0,1),background .35s,border-color .35s}
+    body.light .cards-sheet{box-shadow:0 -8px 30px rgba(0,0,0,.10)}
+    .cards-overlay.open .cards-sheet{transform:translateY(0)}
+    .cards-handle{width:34px;height:3px;border-radius:2px;background:var(--mhandle);margin:0 auto 14px;transition:background .35s}
+    .cards-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .cards-hdr-title{font-size:9px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--t3);transition:color .35s}
+    .cards-close{width:27px;height:27px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      background:var(--mcls);border:1px solid var(--mcls-bd);
+      cursor:pointer;color:var(--t2);transition:background .15s}
+    .cards-close:hover{filter:brightness(1.25)}
+    .cards-close svg{width:14px;height:14px;stroke:currentColor;stroke-width:2}
+    .cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .card-thumb{
+      border-radius:16px;overflow:hidden;cursor:pointer;position:relative;
+      aspect-ratio:.55;border:1.5px solid rgba(255,255,255,.06);
+      transition:border-color .20s,transform .18s,box-shadow .20s;
+      -webkit-tap-highlight-color:transparent}
+    .card-thumb.active{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+    .card-thumb:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,0,0,.35)}
+    .card-thumb:active{transform:scale(.94)}
+    .ct-bg{position:absolute;inset:0}
+    .ct-body{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:12px 8px}
+    .ct-icon{width:38px;height:38px;border-radius:50%;
+      background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);
+      display:flex;align-items:center;justify-content:center;
+      backdrop-filter:blur(4px)}
+    .ct-icon svg{width:18px;height:18px;stroke:#fff;stroke-width:1.6;fill:none}
+    .ct-name{font-family:'Inter',sans-serif;font-size:16px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1;
+      text-shadow:0 2px 8px rgba(0,0,0,.50);text-align:center}
+    .ct-label{font-size:7.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+      color:rgba(255,255,255,.55);text-align:center;line-height:1.3}
+    .ct-active-badge{position:absolute;bottom:9px;left:50%;transform:translateX(-50%);
+      background:rgba(255,255,255,.20);border:1px solid rgba(255,255,255,.30);
+      border-radius:10px;padding:2px 8px;
+      font-size:7px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;
+      color:rgba(255,255,255,.80);backdrop-filter:blur(4px);
+      opacity:0;transition:opacity .18s}
+    .card-thumb.active .ct-active-badge{opacity:1}
   </style>
 </head>
 <body>
@@ -289,83 +325,30 @@
 
     <!-- BANNER -->
     <div class="banner">
-      <div class="banner-ocean" id="bannerOcean"></div>
-      <div class="banner-blend"></div>
-      <div class="banner-grad"></div>
-      <div class="banner-frost"></div>
+      <div class="banner-ocean"  id="bannerOcean"></div>
+      <div class="banner-blend"  id="bannerBlend"></div>
+      <div class="banner-grad"   id="bannerGrad"></div>
+      <div class="banner-frost"  id="bannerFrost"></div>
       <div class="banner-sheen"></div>
-
-      <svg class="mol-svg" viewBox="0 0 76 76" fill="none">
-        <line x1="28" y1="29" x2="11" y2="15" stroke="rgba(34,211,238,.36)" stroke-width="1.4" stroke-linecap="round"/>
-        <line x1="48" y1="29" x2="65" y2="15" stroke="rgba(34,211,238,.36)" stroke-width="1.4" stroke-linecap="round"/>
-        <circle cx="38" cy="36" r="13" fill="rgba(34,211,238,.09)" stroke="rgba(34,211,238,.52)" stroke-width=".9"/>
-        <text x="38" y="40.5" text-anchor="middle" font-size="12" font-weight="700" fill="#22d3ee" font-family="Inter,sans-serif">O</text>
-        <circle cx="8"  cy="12" r="7.5" fill="rgba(255,255,255,.06)" stroke="rgba(200,230,255,.38)" stroke-width=".8"/>
-        <text  x="8"  y="15.5" text-anchor="middle" font-size="8.5" font-weight="700" fill="rgba(210,235,255,.78)" font-family="Inter,sans-serif">H</text>
-        <circle cx="68" cy="12" r="7.5" fill="rgba(255,255,255,.06)" stroke="rgba(200,230,255,.38)" stroke-width=".8"/>
-        <text  x="68" y="15.5" text-anchor="middle" font-size="8.5" font-weight="700" fill="rgba(210,235,255,.78)" font-family="Inter,sans-serif">H</text>
-        <path d="M 17 22 Q 38 9 59 22" stroke="rgba(34,211,238,.20)" stroke-width=".7" fill="none"/>
-        <text x="38" y="9" text-anchor="middle" font-size="5.5" fill="rgba(34,211,238,.48)" font-family="Inter,sans-serif">104.5°</text>
-        <line x1="38" y1="49" x2="38" y2="63" stroke="rgba(34,211,238,.26)" stroke-width=".9" stroke-dasharray="2,2"/>
-        <polygon points="38,67 35.5,62 40.5,62" fill="rgba(34,211,238,.36)"/>
-        <circle cx="32" cy="34" r="1.4" fill="rgba(34,211,238,.52)"/>
-        <circle cx="44" cy="34" r="1.4" fill="rgba(34,211,238,.52)"/>
-      </svg>
-
-      <div class="banner-pills">
-        <span class="pill">Compuesto inorgánico</span>
-        <span class="pill">CAS 7732-18-5</span>
-      </div>
-
+      <div class="mol-svg" id="bannerOverlay"></div>
+      <div class="banner-pills"  id="bannerPills"></div>
       <button class="btn-fs" id="btnFs" title="Pantalla completa">
         <i data-lucide="maximize-2"></i>
       </button>
-
       <div class="banner-content">
-        <div class="banner-tag">Dihidrógeno monóxido · 18.015 g/mol</div>
-        <div class="banner-formula">H<sub>2</sub>O</div>
-        <div class="banner-name">Agua · Water · Eau · Wasser</div>
+        <div class="banner-tag"     id="bannerTag"></div>
+        <div class="banner-formula" id="bannerFormula"></div>
+        <div class="banner-name"    id="bannerName"></div>
       </div>
     </div>
 
     <!-- BG layers (outside scroll container) -->
-    <div class="cb-d"></div><div class="cb-l"></div>
+    <div class="cb-d" id="cbDark"></div>
+    <div class="cb-l" id="cbLight"></div>
 
     <!-- BODY -->
     <div class="card-body">
-      <div class="bento-grid">
-
-        <div class="sect"><span>Estructura</span></div>
-        <div class="bento" data-modal="molecula" style="--col:#22d3ee"><div class="bento-icon"><i data-lucide="atom"></i></div><span class="b-lbl">Molécula</span></div>
-        <div class="bento" data-modal="quimica"  style="--col:#a78bfa"><div class="bento-icon"><i data-lucide="flask-conical"></i></div><span class="b-lbl">Química</span></div>
-        <div class="bento" data-modal="electro"  style="--col:#fbbf24"><div class="bento-icon"><i data-lucide="zap"></i></div><span class="b-lbl">Polaridad</span></div>
-
-        <div class="sect"><span>Física</span></div>
-        <div class="bento" data-modal="densidad"    style="--col:#38bdf8"><div class="bento-icon"><i data-lucide="scale"></i></div><span class="b-lbl">Densidad</span></div>
-        <div class="bento" data-modal="tension"     style="--col:#34d399"><div class="bento-icon"><i data-lucide="droplets"></i></div><span class="b-lbl">Tensión</span></div>
-        <div class="bento" data-modal="flotabilidad" style="--col:#60a5fa"><div class="bento-icon"><i data-lucide="ship"></i></div><span class="b-lbl">Empuje</span></div>
-        <div class="bento" data-modal="insectos"    style="--col:#a3e635"><div class="bento-icon"><i data-lucide="bug"></i></div><span class="b-lbl">Insectos</span></div>
-        <div class="bento" data-modal="capilaridad" style="--col:#2dd4bf"><div class="bento-icon"><i data-lucide="sprout"></i></div><span class="b-lbl">Capilarid.</span></div>
-        <div class="bento" data-modal="sonido"      style="--col:#f472b6"><div class="bento-icon"><i data-lucide="waves"></i></div><span class="b-lbl">Sonido</span></div>
-
-        <div class="sect"><span>Termodinámica</span></div>
-        <div class="bento wide" data-modal="termodinamica" style="--col:#fb923c">
-          <div class="bento-icon"><i data-lucide="thermometer"></i></div>
-          <div><div class="b-title">Termodinámica</div><div class="b-lbl">Calor · fases · temperatura</div></div>
-        </div>
-
-        <div class="sect"><span>Biología</span></div>
-        <div class="bento" data-modal="biologia"    style="--col:#f472b6"><div class="bento-icon"><i data-lucide="dna"></i></div><span class="b-lbl">Vida</span></div>
-        <div class="bento" data-modal="fotosintesis" style="--col:#4ade80"><div class="bento-icon"><i data-lucide="leaf"></i></div><span class="b-lbl">Fotosínt.</span></div>
-        <div class="bento" data-modal="aguapesada"  style="--col:#c084fc"><div class="bento-icon"><i data-lucide="test-tubes"></i></div><span class="b-lbl">D₂O</span></div>
-
-        <div class="sect"><span>Historia &amp; Contexto</span></div>
-        <div class="bento wide" data-modal="historia" style="--col:#e879f9">
-          <div class="bento-icon"><i data-lucide="scroll"></i></div>
-          <div><div class="b-title">Historia del Agua</div><div class="b-lbl">Antigüedad · ciencia · crisis hídrica</div></div>
-        </div>
-
-      </div>
+      <div class="bento-grid" id="bentoGrid"></div>
     </div>
   </div>
 </div>
@@ -375,6 +358,10 @@
 </button>
 <button class="btn-fullscreen" id="btnFullscreen" title="Pantalla completa">
   <i data-lucide="expand"></i>
+</button>
+<button class="btn-cards" id="btnCards">
+  <i data-lucide="layout-grid"></i>
+  <span>Cards</span>
 </button>
 <div class="gyro-badge"><div class="gyro-dot"></div><span id="gyroText">Inclina · mouse hover</span></div>
 
@@ -390,355 +377,119 @@
   </div>
 </div>
 
-<script>
-// ── SVG HELPERS ──────────────────────────────────────────────────────────────
-const PHASE_DIAGRAM = `<svg viewBox="0 0 280 165" fill="none" xmlns="http://www.w3.org/2000/svg" style="padding:12px 14px">
-  <defs>
-    <linearGradient id="gs" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="rgba(100,180,255,.14)"/><stop offset="100%" stop-color="rgba(50,100,200,.04)"/></linearGradient>
-    <linearGradient id="gl" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="rgba(34,211,238,.04)"/><stop offset="100%" stop-color="rgba(34,211,238,.11)"/></linearGradient>
-  </defs>
-  <path d="M0,0 L108,0 L108,100 L42,155 L0,155Z" fill="url(#gs)"/>
-  <path d="M108,0 L260,0 L260,68 L108,100Z" fill="url(#gl)"/>
-  <path d="M108,100 L260,68 L260,155 L42,155Z" fill="rgba(160,160,255,.04)"/>
-  <line x1="108" y1="0" x2="108" y2="100" stroke="rgba(80,160,255,.50)" stroke-width="1.4" stroke-dasharray="5,2"/>
-  <path d="M108,100 C148,94 202,80 238,68" stroke="rgba(34,211,238,.62)" stroke-width="1.4"/>
-  <path d="M42,155 C72,138 94,118 108,100" stroke="rgba(150,150,255,.52)" stroke-width="1.4"/>
-  <circle cx="108" cy="100" r="4" fill="#22d3ee"/>
-  <circle cx="238" cy="68" r="4" fill="#fb923c" opacity=".88"/>
-  <text x="25" y="52" font-size="10" font-weight="600" fill="rgba(120,190,255,.65)" font-family="Space Grotesk,sans-serif">SÓLIDO</text>
-  <text x="148" y="36" font-size="10" font-weight="600" fill="rgba(34,211,238,.65)" font-family="Space Grotesk,sans-serif">LÍQUIDO</text>
-  <text x="155" y="138" font-size="10" font-weight="600" fill="rgba(180,180,255,.52)" font-family="Space Grotesk,sans-serif">GAS</text>
-  <text x="113" y="110" font-size="7" fill="rgba(34,211,238,.80)" font-family="Space Grotesk,sans-serif">Pto. triple</text>
-  <text x="113" y="120" font-size="6.5" fill="rgba(34,211,238,.50)" font-family="Space Grotesk,sans-serif">0.01°C · 0.006 atm</text>
-  <text x="200" y="62" font-size="7" fill="rgba(251,146,60,.82)" font-family="Space Grotesk,sans-serif">Pto. crítico</text>
-  <text x="200" y="72" font-size="6.5" fill="rgba(251,146,60,.52)" font-family="Space Grotesk,sans-serif">374°C · 218 atm</text>
-  <line x1="8" y1="150" x2="260" y2="150" stroke="rgba(255,255,255,.08)" stroke-width=".8"/>
-  <line x1="8" y1="5" x2="8" y2="150" stroke="rgba(255,255,255,.08)" stroke-width=".8"/>
-  <text x="110" y="148" font-size="7.5" fill="rgba(255,255,255,.22)" font-family="Space Grotesk,sans-serif">→ Temperatura</text>
-</svg>`;
+<!-- CARDS PANEL -->
+<div class="cards-overlay" id="cardsOverlay">
+  <div class="cards-sheet">
+    <div class="cards-handle"></div>
+    <div class="cards-hdr">
+      <span class="cards-hdr-title">Cards · Elige una</span>
+      <div class="cards-close" id="cardsClose"><i data-lucide="x"></i></div>
+    </div>
+    <div class="cards-grid" id="cardsGrid"></div>
+  </div>
+</div>
 
-const MOL_DIAGRAM = `<svg viewBox="0 0 260 140" fill="none" xmlns="http://www.w3.org/2000/svg" style="padding:14px 16px">
-  <line x1="100" y1="68" x2="56" y2="36" stroke="rgba(34,211,238,.42)" stroke-width="2" stroke-linecap="round"/>
-  <line x1="160" y1="68" x2="204" y2="36" stroke="rgba(34,211,238,.42)" stroke-width="2" stroke-linecap="round"/>
-  <text x="128" y="28" text-anchor="middle" font-size="9" fill="rgba(34,211,238,.55)" font-family="Inter,sans-serif">104.5°</text>
-  <path d="M68 46 Q128 20 188 46" stroke="rgba(34,211,238,.20)" stroke-width=".8" fill="none"/>
-  <circle cx="130" cy="70" r="20" fill="rgba(34,211,238,.10)" stroke="rgba(34,211,238,.55)" stroke-width="1.2"/>
-  <text x="130" y="75" text-anchor="middle" font-size="16" font-weight="700" fill="#22d3ee" font-family="Inter,sans-serif">O</text>
-  <circle cx="128" cy="60" r="2.5" fill="rgba(34,211,238,.60)"/>
-  <circle cx="132" cy="60" r="2.5" fill="rgba(34,211,238,.60)"/>
-  <circle cx="44" cy="28" r="14" fill="rgba(255,255,255,.07)" stroke="rgba(200,230,255,.42)" stroke-width="1"/>
-  <text x="44" y="33" text-anchor="middle" font-size="12" font-weight="700" fill="rgba(215,238,255,.82)" font-family="Inter,sans-serif">H</text>
-  <circle cx="216" cy="28" r="14" fill="rgba(255,255,255,.07)" stroke="rgba(200,230,255,.42)" stroke-width="1"/>
-  <text x="216" y="33" text-anchor="middle" font-size="12" font-weight="700" fill="rgba(215,238,255,.82)" font-family="Inter,sans-serif">H</text>
-  <text x="44" y="54" text-anchor="middle" font-size="7.5" fill="rgba(200,220,255,.45)" font-family="Inter,sans-serif">δ+</text>
-  <text x="216" y="54" text-anchor="middle" font-size="7.5" fill="rgba(200,220,255,.45)" font-family="Inter,sans-serif">δ+</text>
-  <line x1="130" y1="90" x2="130" y2="118" stroke="rgba(34,211,238,.28)" stroke-width="1.2" stroke-dasharray="3,2"/>
-  <polygon points="130,122 127,117 133,117" fill="rgba(34,211,238,.38)"/>
-  <text x="136" y="110" font-size="7.5" fill="rgba(34,211,238,.52)" font-family="Inter,sans-serif">δ−  dipolo</text>
-  <text x="16" y="120" font-size="8" fill="rgba(200,220,255,.35)" font-family="Space Grotesk,sans-serif">sp³ · bent · polar · 1.85 D</text>
-</svg>`;
+<script type="module">
+import { H2O }       from './cards/h2o.js';
+import { FUEGO }     from './cards/fuego.js';
+import { COMBUSTION} from './cards/combustion.js';
 
-// ── MODAL DATA ───────────────────────────────────────────────────────────────
-const MODALS = {
+const ALL_CARDS = [H2O, FUEGO, COMBUSTION];
+let activeCard   = null;
+let activeModals = {};
 
-molecula:{tag:'Estructura · VSEPR',title:'Molécula H₂O',tabs:[
-  {id:'geo',label:'Geometría',html:`
-    <div class="il-wrap">${MOL_DIAGRAM}</div>
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Geometría</div><div class="ms-v">Bent <span class="ms-u">angular</span></div></div>
-      <div class="mstat"><div class="ms-l">Ángulo H-O-H</div><div class="ms-v">104.5 <span class="ms-u">°</span></div></div>
-      <div class="mstat"><div class="ms-l">Enlace O–H</div><div class="ms-v">96 <span class="ms-u">pm</span></div></div>
-      <div class="mstat"><div class="ms-l">Masa molecular</div><div class="ms-v">18.015 <span class="ms-u">g/mol</span></div></div>
-    </div>
-    <p class="mdesc">Geometría angular por los dos pares solitarios del oxígeno (hibridación sp³). La asimetría confiere polaridad neta de 1.85 Debye y permite los puentes de hidrógeno responsables de todas sus anomalías.</p>`},
-  {id:'quimica',label:'Química',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">pH neutro</div><div class="ms-v">7.0</div></div>
-      <div class="mstat"><div class="ms-l">Constante dieléctrica</div><div class="ms-v">80.1 <span class="ms-u">ε</span></div></div>
-      <div class="mstat"><div class="ms-l">Puentes de H</div><div class="ms-v">4 <span class="ms-u">por molécula</span></div></div>
-      <div class="mstat"><div class="ms-l">Kw (25°C)</div><div class="ms-v">10⁻¹⁴ <span class="ms-u">mol²/L²</span></div></div>
-    </div>
-    <p class="mdesc">El agua es anfótera: puede actuar como ácido (dona H⁺) o base (acepta H⁺). Su alta constante dieléctrica (ε≈80) estabiliza iones en solución — es el solvente universal. Los cuatro puentes de hidrógeno posibles por molécula forman redes supramoleculares dinámicas que explican sus propiedades anómalas.</p>`},
-  {id:'desc',label:'Descubrimiento',html:`
-    <div class="timeline">
-      <div class="tl-item"><div class="tl-yr">585 AC</div><div><div class="tl-t">Thales de Mileto</div><div class="tl-d">El agua como arché — principio fundamental de toda la materia.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">1766</div><div><div class="tl-t">Henry Cavendish</div><div class="tl-d">Aísla el hidrógeno ("aire inflamable") quemando metales en ácido.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">1781</div><div><div class="tl-t">Cavendish sintetiza agua</div><div class="tl-d">Quema hidrógeno en aire y obtiene agua pura — la primera síntesis documentada.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">1783</div><div><div class="tl-t">Antoine Lavoisier</div><div class="tl-d">Nombra al "hidrógeno" (generador de agua). Confirma la fórmula H₂O y refuta la teoría del flogisto.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">1800</div><div><div class="tl-t">Nicholson & Carlisle</div><div class="tl-d">Primera electrólisis del agua — descomposición en H₂ y O₂.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">1932</div><div><div class="tl-t">Harold Urey</div><div class="tl-d">Descubre el deuterio y el agua pesada (D₂O). Premio Nobel de Química 1934.</div></div></div>
-    </div>`}
-]},
+// ── DOM refs ──────────────────────────────────────────────────────────────
+const cardEl      = document.getElementById('card');
+const bentoGrid   = document.getElementById('bentoGrid');
+const bannerOcean = document.getElementById('bannerOcean');
+const bannerBlend = document.getElementById('bannerBlend');
+const bannerGrad  = document.getElementById('bannerGrad');
+const bannerFrost = document.getElementById('bannerFrost');
+const bannerOverlay= document.getElementById('bannerOverlay');
+const bannerPills = document.getElementById('bannerPills');
+const bannerTag   = document.getElementById('bannerTag');
+const bannerFormula=document.getElementById('bannerFormula');
+const bannerName  = document.getElementById('bannerName');
+const cbDark      = document.getElementById('cbDark');
+const cbLight     = document.getElementById('cbLight');
+const glare       = document.getElementById('glare');
+const ocean       = bannerOcean;
+const scene       = document.getElementById('scene');
 
-quimica:{tag:'Química · Propiedades',title:'Química del Agua',tabs:[
-  {id:'datos',label:'Datos',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">pH neutro</div><div class="ms-v">7.0</div></div>
-      <div class="mstat"><div class="ms-l">pKa</div><div class="ms-v">15.7 <span class="ms-u">como ácido</span></div></div>
-      <div class="mstat"><div class="ms-l">ε dieléctrica</div><div class="ms-v">80.1</div></div>
-      <div class="mstat"><div class="ms-l">Kw 25°C</div><div class="ms-v">10⁻¹⁴ <span class="ms-u">mol²/L²</span></div></div>
-    </div>
-    <p class="mdesc">El agua disuelve más sustancias que cualquier otro líquido. Su alta constante dieléctrica (ε=80) reduce la atracción entre iones opuestos, permitiendo que sales como NaCl se ionicen completamente. Puede actuar como ácido o base (anfótera), siendo fundamental para toda la química en solución acuosa.</p>`},
-  {id:'reacciones',label:'Reacciones',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Autoionización</div><div class="ms-v" style="font-size:11px">2H₂O ⇌ H₃O⁺ + OH⁻</div></div>
-      <div class="mstat"><div class="ms-l">Electrólisis</div><div class="ms-v" style="font-size:11px">2H₂O → 2H₂ + O₂</div></div>
-      <div class="mstat"><div class="ms-l">Fotosíntesis (resumen)</div><div class="ms-v" style="font-size:10px">6H₂O + 6CO₂ → C₆H₁₂O₆ + 6O₂</div></div>
-      <div class="mstat"><div class="ms-l">Combustión H₂</div><div class="ms-v" style="font-size:11px">2H₂ + O₂ → 2H₂O</div></div>
-    </div>
-    <p class="mdesc">La electrólisis del agua es la base para la producción de hidrógeno verde — combustible del futuro. La combustión del hidrógeno produce solo vapor de agua, sin CO₂. Los electrolizadores modernos alcanzan eficiencias del 70-80%.</p>`}
-]},
+// ── RENDER CARD ───────────────────────────────────────────────────────────
+function applyBannerVars(card, isLight) {
+  const v = isLight ? card.banner.light : card.banner.dark;
+  ocean.style.filter      = v.filter;
+  bannerBlend.style.background = v.blend;
+  bannerGrad.style.background  = v.grad;
+  bannerFrost.style.background = v.frost;
+  bannerFrost.style.borderBottomColor = v.frostBd;
+  cbDark.style.background  = card.banner.dark.cbGrad;
+  cbLight.style.background = card.banner.light.cbGrad;
+  document.documentElement.style.setProperty('--acc', isLight ? card.accentLight : card.accent);
+  document.documentElement.style.setProperty('--mtag', isLight ? card.accentLight : card.accent);
+  document.documentElement.style.setProperty('--tab-active-bd', isLight ? '#374151' : card.accent);
+}
 
-electro:{tag:'Polaridad · Electroquímica',title:'Dipolo Eléctrico',tabs:[
-  {id:'datos',label:'Datos',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Momento dipolar</div><div class="ms-v">1.85 <span class="ms-u">Debye</span></div></div>
-      <div class="mstat"><div class="ms-l">Electroneg. O</div><div class="ms-v">3.44 <span class="ms-u">Pauling</span></div></div>
-      <div class="mstat"><div class="ms-l">Electroneg. H</div><div class="ms-v">2.20 <span class="ms-u">Pauling</span></div></div>
-      <div class="mstat"><div class="ms-l">Carga parcial O</div><div class="ms-v">−2δ</div></div>
-    </div>
-    <p class="mdesc">El momento dipolar de 1.85 D resulta de la asimetría angular y la diferencia de electronegatividad. El oxígeno atrae densidad electrónica (δ−); los hidrógenos quedan δ+. Este dipolo permanente es la razón por la que el agua orienta sus moléculas en campos eléctricos externos y disuelve tan bien las sales iónicas.</p>`},
-  {id:'puentes',label:'Puentes H',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Energía por puente</div><div class="ms-v">20 <span class="ms-u">kJ/mol</span></div></div>
-      <div class="mstat"><div class="ms-l">Longitud O···H</div><div class="ms-v">197 <span class="ms-u">pm</span></div></div>
-      <div class="mstat"><div class="ms-l">Por molécula (máx)</div><div class="ms-v">4 <span class="ms-u">puentes</span></div></div>
-      <div class="mstat"><div class="ms-l">Tiempo de vida</div><div class="ms-v">~1 <span class="ms-u">ps</span></div></div>
-    </div>
-    <p class="mdesc">Cada molécula de agua puede formar 4 puentes de hidrógeno simultáneos (2 donando, 2 aceptando). Estos son 10× más fuertes que las fuerzas de van der Waals, pero 20× más débiles que los enlaces covalentes. Son responsables del calor específico elevado, la tensión superficial alta, y la anomalía del punto de fusión. En el hielo, la red de puentes H forma una estructura hexagonal perfecta.</p>`}
-]},
+function buildBentos(card) {
+  bentoGrid.innerHTML = card.bentos.map(b => {
+    if (b.section) {
+      return `<div class="sect"><span>${b.section}</span></div>`;
+    }
+    if (b.wide) {
+      return `<div class="bento wide" data-modal="${b.id}" style="--col:${b.color}">
+        <div class="bento-icon"><i data-lucide="${b.icon}"></i></div>
+        <div><div class="b-title">${b.label}</div><div class="b-lbl">${b.sublabel || ''}</div></div>
+      </div>`;
+    }
+    return `<div class="bento" data-modal="${b.id}" style="--col:${b.color}">
+      <div class="bento-icon"><i data-lucide="${b.icon}"></i></div>
+      <span class="b-lbl">${b.label}</span>
+    </div>`;
+  }).join('');
+}
 
-densidad:{tag:'Física · Densidad anómala',title:'Anomalía de la Densidad',tabs:[
-  {id:'datos',label:'Datos',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Densidad máxima</div><div class="ms-v">1.000 <span class="ms-u">g/cm³ a 4°C</span></div></div>
-      <div class="mstat"><div class="ms-l">Densidad hielo</div><div class="ms-v">0.917 <span class="ms-u">g/cm³</span></div></div>
-      <div class="mstat"><div class="ms-l">Expansión al congelar</div><div class="ms-v">+9 <span class="ms-u">%</span></div></div>
-      <div class="mstat"><div class="ms-l">Temp. densidad máx</div><div class="ms-v">4 <span class="ms-u">°C</span></div></div>
-    </div>`},
-  {id:'comparacion',label:'Comparación',html:`
-    <div class="cmp-bars">
-      <div class="cbar"><span class="cbar-label">Hielo (0°C)</span><div class="cbar-track"><div class="cbar-fill" style="width:91%;background:rgba(120,200,255,.65)"></div></div><span class="cbar-val">0.917 g/cm³</span></div>
-      <div class="cbar"><span class="cbar-label">Agua (4°C)</span><div class="cbar-track"><div class="cbar-fill" style="width:100%;background:#22d3ee"></div></div><span class="cbar-val">1.000 g/cm³</span></div>
-      <div class="cbar"><span class="cbar-label">Agua (20°C)</span><div class="cbar-track"><div class="cbar-fill" style="width:99.8%;background:rgba(34,211,238,.70)"></div></div><span class="cbar-val">0.998 g/cm³</span></div>
-      <div class="cbar"><span class="cbar-label">Agua (100°C)</span><div class="cbar-track"><div class="cbar-fill" style="width:95.8%;background:rgba(34,211,238,.45)"></div></div><span class="cbar-val">0.958 g/cm³</span></div>
-      <div class="cbar"><span class="cbar-label">Vapor (100°C)</span><div class="cbar-track"><div class="cbar-fill" style="width:0.06%;background:rgba(200,200,255,.40)"></div></div><span class="cbar-val">0.0006 g/cm³</span></div>
-    </div>
-    <p class="mdesc">La anomalía de densidad del agua salvó la vida en la Tierra. Al congelarse desde la superficie (el hielo flota), el agua líquida debajo se mantiene a 4°C — temperatura perfecta para la vida acuática en invierno.</p>`}
-]},
+function renderCard(card, skipFade) {
+  const doRender = () => {
+    activeCard   = card;
+    activeModals = card.modals;
+    const isLight = document.body.classList.contains('light');
 
-tension:{tag:'Física · Tensión superficial',title:'Tensión Superficial',tabs:[
-  {id:'datos',label:'Datos',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Tensión (20°C)</div><div class="ms-v">72.8 <span class="ms-u">mN/m</span></div></div>
-      <div class="mstat"><div class="ms-l">Aceite oliva</div><div class="ms-v">≈32 <span class="ms-u">mN/m</span></div></div>
-      <div class="mstat"><div class="ms-l">Etanol</div><div class="ms-v">22.4 <span class="ms-u">mN/m</span></div></div>
-      <div class="mstat"><div class="ms-l">Mercurio</div><div class="ms-v">485 <span class="ms-u">mN/m</span></div></div>
-    </div>
-    <p class="mdesc">Las moléculas en la superficie no tienen vecinas encima — experimentan una fuerza neta hacia el interior, creando una membrana elástica. La tensión de 72.8 mN/m es excepcionalmente alta para una molécula tan pequeña, gracias a los puentes de hidrógeno. Un clip de metal puede flotar si se coloca con cuidado sobre la superficie.</p>`},
-  {id:'fenomenos',label:'Fenómenos',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Gotas</div><div class="ms-v">Esféricas <span class="ms-u">mín. superficie</span></div></div>
-      <div class="mstat"><div class="ms-l">Menisco en vidrio</div><div class="ms-v">Cóncavo <span class="ms-u">adhesión > cohesión</span></div></div>
-      <div class="mstat"><div class="ms-l">Menisco en Hg</div><div class="ms-v">Convexo <span class="ms-u">cohesión > adhesión</span></div></div>
-      <div class="mstat"><div class="ms-l">Tensión activa</div><div class="ms-v">Surfactantes <span class="ms-u">reducen γ</span></div></div>
-    </div>
-    <p class="mdesc">Los jabones y detergentes son surfactantes: sus moléculas tienen un extremo polar (hidrofílico) y uno apolar (hidrofóbico). Se sitúan en la interfase agua-aire, reduciendo la tensión superficial de 72 a ~35 mN/m y permitiendo que el agua "moje" superficies grasas.</p>`}
-]},
+    bannerOcean.style.backgroundImage = `url('${card.banner.image}')`;
+    bannerOverlay.innerHTML = card.banner.overlaySvg;
+    bannerPills.innerHTML   = card.banner.pills.map(p => `<span class="pill">${p}</span>`).join('');
+    bannerTag.textContent   = card.banner.tag;
+    bannerFormula.innerHTML = card.banner.formula;
+    bannerName.textContent  = card.banner.formulaName;
+    document.title          = `${card.name} · Cards`;
 
-flotabilidad:{tag:'Física · Hidrostática',title:'Principio de Arquímedes',tabs:[
-  {id:'principio',label:'Principio',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Empuje</div><div class="ms-v" style="font-size:12px">E = ρ · g · V</div></div>
-      <div class="mstat"><div class="ms-l">ρ agua (4°C)</div><div class="ms-v">1 000 <span class="ms-u">kg/m³</span></div></div>
-      <div class="mstat"><div class="ms-l">Flota si ρ media</div><div class="ms-v">&lt; 1.0 <span class="ms-u">g/cm³</span></div></div>
-      <div class="mstat"><div class="ms-l">Hunde si ρ media</div><div class="ms-v">&gt; 1.0 <span class="ms-u">g/cm³</span></div></div>
-    </div>
-    <p class="mdesc">Arquímedes (287–212 aC) formuló que todo cuerpo sumergido recibe un empuje igual al peso del fluido desplazado. Un barco de acero (ρ=7.8 g/cm³) flota porque su densidad media incluyendo el aire interior es menor que 1 g/cm³. Eureka.</p>`},
-  {id:'ejemplos',label:'Ejemplos',html:`
-    <div class="cmp-bars">
-      <div class="cbar"><span class="cbar-label">Balsa (madera)</span><div class="cbar-track"><div class="cbar-fill" style="width:12%;background:#4ade80"></div></div><span class="cbar-val">0.12 g/cm³ ↑</span></div>
-      <div class="cbar"><span class="cbar-label">Corcho</span><div class="cbar-track"><div class="cbar-fill" style="width:24%;background:#a3e635"></div></div><span class="cbar-val">0.24 g/cm³ ↑</span></div>
-      <div class="cbar"><span class="cbar-label">Aceite</span><div class="cbar-track"><div class="cbar-fill" style="width:88%;background:#fbbf24"></div></div><span class="cbar-val">0.88 g/cm³ ↑</span></div>
-      <div class="cbar"><span class="cbar-label">Hielo</span><div class="cbar-track"><div class="cbar-fill" style="width:91.7%;background:#60a5fa"></div></div><span class="cbar-val">0.917 g/cm³ ↑</span></div>
-      <div class="cbar"><span class="cbar-label">Aluminio</span><div class="cbar-track"><div class="cbar-fill" style="width:100%;background:rgba(255,100,100,.65)"></div></div><span class="cbar-val">2.7 g/cm³ ↓</span></div>
-      <div class="cbar"><span class="cbar-label">Plomo</span><div class="cbar-track"><div class="cbar-fill" style="width:100%;background:rgba(255,60,60,.65)"></div></div><span class="cbar-val">11.3 g/cm³ ↓</span></div>
-    </div>`}
-]},
+    applyBannerVars(card, isLight);
+    buildBentos(card);
+    lucide.createIcons();
+    updateCardsPanel();
 
-insectos:{tag:'Biología · Interfase',title:'Insectos & Tensión Superficial',tabs:[
-  {id:'datos',label:'Datos',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Zapatero (Gerris)</div><div class="ms-v">~15× <span class="ms-u">su peso soportado</span></div></div>
-      <div class="mstat"><div class="ms-l">Nano-pelos/pata</div><div class="ms-v">~16 000</div></div>
-      <div class="mstat"><div class="ms-l">Ángulo de contacto</div><div class="ms-v">&gt;150° <span class="ms-u">superhydrofóbico</span></div></div>
-      <div class="mstat"><div class="ms-l">Velocidad Gerris</div><div class="ms-v">1.5 <span class="ms-u">m/s</span></div></div>
-    </div>
-    <p class="mdesc">El zapatero de agua (Gerris lacustris) tiene patas cubiertas de ≈16 000 micro-pelos orientados que atrapan bolsas de aire. El ángulo de contacto supera los 150° (superhydrofóbico). Las patas deforman la superficie sin perforarla, distribuyendo el peso en área amplia. Para rompera necesitaría ejercer ~15× su propio peso.</p>`},
-  {id:'otros',label:'Otros organismos',html:`
-    <div class="timeline">
-      <div class="tl-item"><div class="tl-yr">Larvas mosquito</div><div><div class="tl-t">Respiran desde abajo</div><div class="tl-d">Cuelgan invertidas de la superficie usando sifones respiratorios hidrofóbicos.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">Escarabajo Stenocara</div><div><div class="tl-t">Recolecta niebla</div><div class="tl-d">Su exoesqueleto alterna áreas hidrofílicas e hidrofóbicas que canalizan gotas hacia la boca.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">Araña Dolomedes</div><div><div class="tl-t">Camina y pesca</div><div class="tl-d">Usa la tensión superficial para moverse y detecta vibraciones del agua para cazar peces.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">Basilisco (lagarto)</div><div><div class="tl-t">Corre sobre el agua</div><div class="tl-d">Sus patas palmadas golpean el agua con fuerza, creando cavidades de aire antes de que la superficie se rompa.</div></div></div>
-    </div>`}
-]},
+    if (!skipFade) {
+      cardEl.style.opacity = '1';
+      cardEl.style.transform = 'rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg)) scale(1)';
+    }
+  };
 
-capilaridad:{tag:'Física · Capilaridad',title:'Efecto Capilar',tabs:[
-  {id:'datos',label:'Datos',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Xilema vegetal</div><div class="ms-v">&gt;10 <span class="ms-u">m de altura</span></div></div>
-      <div class="mstat"><div class="ms-l">Ley de Jurin</div><div class="ms-v" style="font-size:10px">h = 2γcosθ/ρgr</div></div>
-      <div class="mstat"><div class="ms-l">Adhesión agua-vidrio</div><div class="ms-v">&gt; <span class="ms-u">cohesión H₂O</span></div></div>
-      <div class="mstat"><div class="ms-l">En tubo de 0.1mm</div><div class="ms-v">14.8 <span class="ms-u">cm de ascenso</span></div></div>
-    </div>
-    <p class="mdesc">La capilaridad es el ascenso espontáneo del agua en tubos estrechos por balance entre adhesión (agua-pared) y cohesión (agua-agua). En árboles el xilema tiene tubos de 20–200 μm que conducen agua sin bombeo activo. La transpiración en hojas crea tensión que "jala" columnas continuas — teoría cohesión-tensión. Sin capilaridad, la secuoya (115 m) sería imposible.</p>`},
-  {id:'aplicaciones',label:'Aplicaciones',html:`
-    <div class="timeline">
-      <div class="tl-item"><div class="tl-yr">Plantas</div><div><div class="tl-t">Transporte en xilema</div><div class="tl-d">Agua sube desde raíces a hojas por la combinación de capilaridad, transpiración y presión osmótica.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">Medicina</div><div><div class="tl-t">Flujo en capilares sanguíneos</div><div class="tl-d">La sangre fluye por capilares de 5–10 μm de diámetro gracias a la capilaridad y presión cardíaca.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">Papel</div><div><div class="tl-t">Absorción de tinta</div><div class="tl-d">Las fibras de celulosa forman miles de micro-canales que absorben líquido por capilaridad.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">Tecnología</div><div><div class="tl-t">Tests rápidos (LFT)</div><div class="tl-d">Los tests de COVID y embarazo usan tiras de nitrocelulosa que transportan la muestra por capilaridad sin bomba.</div></div></div>
-    </div>`}
-]},
+  if (skipFade) { doRender(); return; }
 
-sonido:{tag:'Física · Acústica',title:'Sonido en el Agua',tabs:[
-  {id:'datos',label:'Datos',html:`
-    <div class="cmp-bars" style="margin-bottom:14px">
-      <div class="cbar"><span class="cbar-label">Agua (20°C)</span><div class="cbar-track"><div class="cbar-fill" style="width:100%;background:#22d3ee"></div></div><span class="cbar-val">1 480 m/s</span></div>
-      <div class="cbar"><span class="cbar-label">Agua de mar</span><div class="cbar-track"><div class="cbar-fill" style="width:103%;background:rgba(34,211,238,.75)"></div></div><span class="cbar-val">1 530 m/s</span></div>
-      <div class="cbar"><span class="cbar-label">Hielo</span><div class="cbar-track"><div class="cbar-fill" style="width:100%;background:rgba(120,200,255,.70)"></div></div><span class="cbar-val">3 200 m/s</span></div>
-      <div class="cbar"><span class="cbar-label">Aire (20°C)</span><div class="cbar-track"><div class="cbar-fill" style="width:23%;background:rgba(200,200,255,.50)"></div></div><span class="cbar-val">343 m/s</span></div>
-    </div>
-    <p class="mdesc">El sonido viaja ~4.3× más rápido en agua que en aire porque el agua es casi incompresible. Las ballenas explotan el canal SOFAR (~1000 m de profundidad, mínimo de velocidad acústica) para comunicarse a miles de km. Los sonares militares y las ecografías médicas aprovechan esta propiedad.</p>`}
-]},
+  cardEl.style.opacity = '0';
+  cardEl.style.transform = 'rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg)) scale(.97)';
+  setTimeout(doRender, 220);
+}
 
-termodinamica:{tag:'Física · Termodinámica',title:'Propiedades Térmicas',tabs:[
-  {id:'calor',label:'Calor',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Calor específico</div><div class="ms-v">4 182 <span class="ms-u">J/(kg·K)</span></div></div>
-      <div class="mstat"><div class="ms-l">Calor de fusión</div><div class="ms-v">334 <span class="ms-u">kJ/kg</span></div></div>
-      <div class="mstat"><div class="ms-l">Calor de vaporiz.</div><div class="ms-v">2 260 <span class="ms-u">kJ/kg</span></div></div>
-      <div class="mstat"><div class="ms-l">Cond. térmica</div><div class="ms-v">0.606 <span class="ms-u">W/(m·K)</span></div></div>
-    </div>
-    <p class="mdesc">El calor específico más alto de los líquidos no metálicos (4182 J/kg·K): los océanos actúan como termostatos planetarios. El calor de vaporización extraordinario (2260 kJ/kg) explica la eficiencia de la sudoración — evaporar 1 L requiere ~627 kcal.</p>`},
-  {id:'fases',label:'Diagrama de fases',html:`
-    <div class="il-wrap">${PHASE_DIAGRAM}</div>
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Punto triple</div><div class="ms-v">0.01°C <span class="ms-u">0.006 atm</span></div></div>
-      <div class="mstat"><div class="ms-l">Punto crítico</div><div class="ms-v">374°C <span class="ms-u">218 atm</span></div></div>
-    </div>
-    <p class="mdesc">El punto triple es la única condición donde los tres estados coexisten en equilibrio. Por encima del punto crítico, el agua es un fluido supercrítico con propiedades de gas y líquido simultáneamente — usado como solvente "verde" en extracción industrial.</p>`},
-  {id:'clima',label:'Clima',html:`
-    <div class="crisis-grid">
-      <div class="crisis-card"><div class="crisis-n">71%</div><div class="crisis-l">de la superficie terrestre cubierta de agua</div></div>
-      <div class="crisis-card"><div class="crisis-n">97%</div><div class="crisis-l">es agua salada en océanos</div></div>
-      <div class="crisis-card"><div class="crisis-n">~4°C</div><div class="crisis-l">variación de temperatura media oceánica anual</div></div>
-      <div class="crisis-card"><div class="crisis-n">30×</div><div class="crisis-l">más calor acumula el océano vs la atmósfera</div></div>
-    </div>
-    <p class="mdesc">Los océanos absorben ~90% del calor extra generado por el efecto invernadero. Su enorme capacidad calorífica (4182 J/kg·K) retrasa el calentamiento global — pero también significa que el calor almacenado persistirá siglos aunque cesen las emisiones.</p>`}
-]},
-
-biologia:{tag:'Biología · Composición',title:'Agua en la Vida',tabs:[
-  {id:'cuerpo',label:'Cuerpo humano',html:`
-    <div class="cmp-bars" style="margin-bottom:14px">
-      <div class="cbar"><span class="cbar-label">Sangre</span><div class="cbar-track"><div class="cbar-fill" style="width:83%;background:#f472b6"></div></div><span class="cbar-val">83%</span></div>
-      <div class="cbar"><span class="cbar-label">Cerebro</span><div class="cbar-track"><div class="cbar-fill" style="width:73%;background:#a78bfa"></div></div><span class="cbar-val">73%</span></div>
-      <div class="cbar"><span class="cbar-label">Músculo</span><div class="cbar-track"><div class="cbar-fill" style="width:75%;background:#60a5fa"></div></div><span class="cbar-val">75%</span></div>
-      <div class="cbar"><span class="cbar-label">Promedio adulto</span><div class="cbar-track"><div class="cbar-fill" style="width:65%;background:#34d399"></div></div><span class="cbar-val">60–65%</span></div>
-      <div class="cbar"><span class="cbar-label">Huesos</span><div class="cbar-track"><div class="cbar-fill" style="width:31%;background:#fbbf24"></div></div><span class="cbar-val">31%</span></div>
-    </div>
-    <p class="mdesc">Deshidratación del 2% reduce el rendimiento cognitivo y físico notablemente. La del 10% es letal. Las células musculares contienen ~75% de agua. El agua regula temperatura, transporta nutrientes y es reactivo en miles de reacciones enzimáticas.</p>`},
-  {id:'celula',label:'Célula',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Citoplasma</div><div class="ms-v">70–85 <span class="ms-u">% agua</span></div></div>
-      <div class="mstat"><div class="ms-l">Solvente celular</div><div class="ms-v">Universal <span class="ms-u">en bioquímica</span></div></div>
-      <div class="mstat"><div class="ms-l">Efecto hidrofóbico</div><div class="ms-v">Forma <span class="ms-u">membranas</span></div></div>
-      <div class="mstat"><div class="ms-l">Proteínas</div><div class="ms-v">Plegamiento <span class="ms-u">dependiente</span></div></div>
-    </div>
-    <p class="mdesc">Las membranas celulares existen gracias al efecto hidrofóbico: las colas apolares de los fosfolípidos se orientan lejos del agua, formando bicapas espontáneamente. El plegamiento correcto de proteínas depende críticamente del agua. Sin el "efecto hidrofóbico" no habría compartimentalización celular — no habría vida.</p>`}
-]},
-
-fotosintesis:{tag:'Biología · Fotosíntesis',title:'Agua y Fotosíntesis',tabs:[
-  {id:'reaccion',label:'Reacción',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Ecuación global</div><div class="ms-v" style="font-size:10px">6H₂O + 6CO₂ + luz</div></div>
-      <div class="mstat"><div class="ms-l">Productos</div><div class="ms-v" style="font-size:10px">→ C₆H₁₂O₆ + 6O₂</div></div>
-      <div class="mstat"><div class="ms-l">Origen del O₂</div><div class="ms-v">Fotólisis <span class="ms-u">del agua</span></div></div>
-      <div class="mstat"><div class="ms-l">Luz absorbida</div><div class="ms-v">400–700 <span class="ms-u">nm</span></div></div>
-    </div>
-    <p class="mdesc">En el fotosistema II, la energía luminosa divide moléculas de agua (fotólisis), liberando electrones que impulsan la síntesis de ATP. El O₂ que respiramos es subproducto de esta ruptura. Todo el oxígeno libre de la atmósfera terrestre proviene históricamente de la fotólisis del agua por cianobacterias y plantas.</p>`},
-  {id:'historia',label:'Evolución',html:`
-    <div class="timeline">
-      <div class="tl-item"><div class="tl-yr">~3.5 Ga</div><div><div class="tl-t">Cianobacterias</div><div class="tl-d">Primeros organismos en usar agua como fuente de electrones. Comienzan a liberar O₂ como "contaminante".</div></div></div>
-      <div class="tl-item"><div class="tl-yr">~2.4 Ga</div><div><div class="tl-t">Gran Oxidación</div><div class="tl-d">El O₂ acumulado oxida el hierro oceánico y luego satura la atmósfera — la primera catástrofe ecológica global.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">~500 Ma</div><div><div class="tl-t">Plantas terrestres</div><div class="tl-d">Colonización de tierra firme. Desarrollo de xilema para conducir agua contra la gravedad.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">1771</div><div><div class="tl-t">Priestley</div><div class="tl-d">Demuestra que las plantas "restauran el aire" consumido por la respiración.</div></div></div>
-    </div>`}
-]},
-
-aguapesada:{tag:'Curiosidades · Isótopos',title:'Agua Pesada D₂O',tabs:[
-  {id:'datos',label:'Datos',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Masa molecular</div><div class="ms-v">20.03 <span class="ms-u">g/mol</span></div></div>
-      <div class="mstat"><div class="ms-l">Densidad</div><div class="ms-v">1.105 <span class="ms-u">g/cm³</span></div></div>
-      <div class="mstat"><div class="ms-l">Punto ebullición</div><div class="ms-v">101.4 <span class="ms-u">°C</span></div></div>
-      <div class="mstat"><div class="ms-l">En agua natural</div><div class="ms-v">1/3 200 <span class="ms-u">moléculas</span></div></div>
-    </div>
-    <p class="mdesc">El agua pesada contiene deuterio (²H), isótopo del hidrógeno con un neutrón extra. Es tóxica para los organismos vivos en altas concentraciones porque la diferencia de masa altera las tasas de reacción enzimática. Se separa industrialmente por destilación fraccionada (diferencia de 1.4°C en punto de ebullición).</p>`},
-  {id:'nuclear',label:'Usos nucleares',html:`
-    <div class="mstats">
-      <div class="mstat"><div class="ms-l">Uso principal</div><div class="ms-v">Moderador <span class="ms-u">CANDU</span></div></div>
-      <div class="mstat"><div class="ms-l">Ventaja vs agua</div><div class="ms-v">No absorbe <span class="ms-u">neutrones</span></div></div>
-      <div class="mstat"><div class="ms-l">Permite usar</div><div class="ms-v">Uranio <span class="ms-u">natural (0.7% U-235)</span></div></div>
-      <div class="mstat"><div class="ms-l">Descubrimiento</div><div class="ms-v">1932 <span class="ms-u">Harold Urey</span></div></div>
-    </div>
-    <p class="mdesc">Los reactores CANDU (Canadá) usan D₂O como moderador y refrigerante. La clave: ralentiza los neutrones para mantener la fisión, sin absorberlos como haría el agua normal. Esto permite usar uranio natural sin enriquecimiento — más barato, pero los reactores son más grandes y complejos.</p>`}
-]},
-
-historia:{tag:'Historia · Agua & Humanidad',title:'Historia del Agua',tabs:[
-  {id:'antiguedad',label:'Antigüedad',html:`
-    <div class="timeline">
-      <div class="tl-item"><div class="tl-yr">~3500 AC</div><div><div class="tl-t">Mesopotamia</div><div class="tl-d">Primeros canales de irrigación en el Tigris y Éufrates. El control del agua = poder político.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">~3100 AC</div><div><div class="tl-t">Egipto</div><div class="tl-d">El nilómetro mide el Nilo. Las crecidas regulan agricultura, calendario y recaudación fiscal.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">~585 AC</div><div><div class="tl-t">Thales de Mileto</div><div class="tl-d">El agua como arché — principio fundamental del cosmos. Primera hipótesis materialista sobre el origen de la vida.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">~300 AC</div><div><div class="tl-t">Acueductos romanos</div><div class="tl-d">Roma construye 11 acueductos (>800 km totales) que abastecen 1 millón de personas. Ingeniería hidráulica sin precedentes.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">~250 AC</div><div><div class="tl-t">Arquímedes</div><div class="tl-d">Principio del empuje hidrostático. Tornillo de Arquímedes para elevar agua en irrigación — aún usado.</div></div></div>
-    </div>`},
-  {id:'ciencia',label:'Revolución científica',html:`
-    <div class="timeline">
-      <div class="tl-item"><div class="tl-yr">1766</div><div><div class="tl-t">Cavendish</div><div class="tl-d">Aísla el "aire inflamable" (hidrógeno). Demuestra que al quemarlo produce agua.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">1783</div><div><div class="tl-t">Lavoisier</div><div class="tl-d">Nombra al hidrógeno y oxígeno. Confirma H₂O = 2H + O. Fin de la teoría del flogisto.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">1800</div><div><div class="tl-t">Nicholson &amp; Carlisle</div><div class="tl-d">Primera electrólisis del agua. Descomponen H₂O en sus elementos con pila de Volta.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">1884</div><div><div class="tl-t">Svante Arrhenius</div><div class="tl-d">Teoría de la ionización. Explica el pH y la conducción eléctrica en agua.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">1932</div><div><div class="tl-t">Harold Urey</div><div class="tl-d">Descubre el deuterio. Nobel 1934. Fundamento del agua pesada y tecnología nuclear.</div></div></div>
-      <div class="tl-item"><div class="tl-yr">1952</div><div><div class="tl-t">Estructura del hielo</div><div class="tl-d">Primer análisis detallado de la red de puentes de hidrógeno en el hielo por rayos X.</div></div></div>
-    </div>`},
-  {id:'crisis',label:'Crisis hídrica',html:`
-    <div class="crisis-grid">
-      <div class="crisis-card"><div class="crisis-n">2.5%</div><div class="crisis-l">del agua total es dulce</div></div>
-      <div class="crisis-card"><div class="crisis-n">0.3%</div><div class="crisis-l">accesible para consumo humano</div></div>
-      <div class="crisis-card"><div class="crisis-n" style="color:#f87171">2.2B</div><div class="crisis-l">personas sin agua potable (2023)</div></div>
-      <div class="crisis-card"><div class="crisis-n" style="color:#f87171">5B</div><div class="crisis-l">en estrés hídrico proyectado para 2050</div></div>
-    </div>
-    <p class="mdesc">La crisis del agua es silenciosa pero urgente. El 70% del agua dulce se usa en agricultura. El cambio climático redistribuye la lluvia — más inundaciones y más sequías simultáneamente. Tecnologías emergentes: desalinización solar, cosecha de niebla (inspirada en el escarabajo Stenocara), y reciclaje de aguas grises.</p>`}
-]}
-
-};
-
-// ── TILT ENGINE ──────────────────────────────────────────────────────────────
-const card    = document.getElementById('card');
-const glare   = document.getElementById('glare');
-const ocean   = document.getElementById('bannerOcean');
-const scene   = document.getElementById('scene');
+// ── TILT ENGINE ───────────────────────────────────────────────────────────
 let cx=0,cy=0,tx=0,ty=0,gyroActive=false;
 
 function applyTilt(ax,ay){
-  card.style.setProperty('--tx',ax+'deg');
-  card.style.setProperty('--ty',ay+'deg');
+  cardEl.style.setProperty('--tx',ax+'deg');
+  cardEl.style.setProperty('--ty',ay+'deg');
   const L=document.body.classList.contains('light');
   const sx=ay*2.2,sy=-ax*2.2;
-  card.style.boxShadow=L
+  cardEl.style.boxShadow=L
     ?`${sx}px ${30+sy}px 65px rgba(80,50,20,.20),${sx*.3}px ${10+sy*.3}px 20px rgba(80,50,20,.10),0 0 0 .5px rgba(0,0,0,.07)`
     :`${sx}px ${38+sy}px 90px rgba(0,0,0,.68),${sx*.35}px ${12+sy*.35}px 35px rgba(0,6,24,.45),0 0 0 .5px rgba(80,180,255,.10)`;
   glare.style.background=`radial-gradient(ellipse 68% 52% at ${50-ay*2.2}% ${50+ax*2}%,rgba(255,255,255,.08) 0%,transparent 65%)`;
@@ -748,15 +499,15 @@ function applyTilt(ax,ay){
 
 scene.addEventListener('mousemove',e=>{
   if(gyroActive)return;
-  const r=card.getBoundingClientRect();
+  const r=cardEl.getBoundingClientRect();
   tx=-((e.clientY-r.top)/r.height-.5)*14;
   ty= ((e.clientX-r.left)/r.width-.5)*14;
 });
 scene.addEventListener('mouseleave',()=>{if(!gyroActive){tx=0;ty=0;}});
 scene.addEventListener('touchmove',e=>{
-  if(gyroActive||e.target.closest('.modal-panel'))return;
+  if(gyroActive||e.target.closest('.modal-panel,.cards-sheet'))return;
   e.preventDefault();
-  const t=e.touches[0],r=card.getBoundingClientRect();
+  const t=e.touches[0],r=cardEl.getBoundingClientRect();
   tx=-((t.clientY-r.top)/r.height-.5)*10;
   ty= ((t.clientX-r.left)/r.width-.5)*10;
 },{passive:false});
@@ -775,19 +526,20 @@ function initGyro(){
   ?document.addEventListener('touchstart',()=>{if(!gyroActive)DeviceOrientationEvent.requestPermission().then(r=>{if(r==='granted')initGyro();}).catch(()=>{});},{once:true})
   :initGyro();
 
-// ── MODAL ────────────────────────────────────────────────────────────────────
-const overlay    = document.getElementById('modalOverlay');
-const modalPanel = document.getElementById('modalPanel');
-const modalTabs  = document.getElementById('modalTabs');
-const modalContent=document.getElementById('modalContent');
-let currentModal = null;
+// ── MODAL ─────────────────────────────────────────────────────────────────
+const overlay     = document.getElementById('modalOverlay');
+const modalPanel  = document.getElementById('modalPanel');
+const modalTabs   = document.getElementById('modalTabs');
+const modalContent= document.getElementById('modalContent');
+let currentModal  = null;
 
-document.querySelectorAll('.bento[data-modal]').forEach(b=>{
-  b.addEventListener('click',()=>openModal(b.dataset.modal));
+bentoGrid.addEventListener('click', e => {
+  const b = e.target.closest('.bento[data-modal]');
+  if (b) openModal(b.dataset.modal);
 });
 
 function openModal(id){
-  const d=MODALS[id]; if(!d)return;
+  const d=activeModals[id]; if(!d)return;
   currentModal=d;
   document.getElementById('modalTag').textContent=d.tag;
   document.getElementById('modalTitle').textContent=d.title;
@@ -802,7 +554,6 @@ function renderTabs(activeIdx){
   ).join('');
   modalContent.innerHTML=d.tabs[activeIdx].html;
   lucide.createIcons({nodes:[modalContent]});
-  // animate bars
   setTimeout(()=>{
     modalContent.querySelectorAll('.cbar-fill').forEach(el=>{
       const w=el.style.width; el.style.width='0';
@@ -823,20 +574,58 @@ let tsY=0;
 modalPanel.addEventListener('touchstart',e=>{tsY=e.touches[0].clientY;},{passive:true});
 modalPanel.addEventListener('touchend',e=>{if(e.changedTouches[0].clientY-tsY>70)closeModal();},{passive:true});
 
-// ── THEME ────────────────────────────────────────────────────────────────────
-const togBtn=document.getElementById('themeToggle');
-const togIcon=document.getElementById('togIcon');
-function applyTheme(light,anim){
-  document.body.classList.toggle('light',light);
-  togIcon.innerHTML=light?'<i data-lucide="moon"></i>':'<i data-lucide="sun"></i>';
-  lucide.createIcons({nodes:[togIcon]});
-  if(anim){togBtn.classList.remove('pop','spin');void togBtn.offsetWidth;togBtn.classList.add('pop','spin');togBtn.addEventListener('animationend',()=>togBtn.classList.remove('pop','spin'),{once:true});}
-  localStorage.setItem('wc-light',light?'1':'0');
-}
-togBtn.addEventListener('click',()=>applyTheme(!document.body.classList.contains('light'),true));
-applyTheme(localStorage.getItem('wc-light')==='1',false);
+// ── CARDS PANEL ───────────────────────────────────────────────────────────
+const cardsOverlay = document.getElementById('cardsOverlay');
+const cardsGrid    = document.getElementById('cardsGrid');
 
-// ── FULLSCREEN ───────────────────────────────────────────────────────────────
+function updateCardsPanel() {
+  cardsGrid.innerHTML = ALL_CARDS.map(c => `
+    <div class="card-thumb ${c.id===activeCard?.id?'active':''}" data-card-id="${c.id}">
+      <div class="ct-bg" style="background:${c.panelGradient}"></div>
+      <div class="ct-body">
+        <div class="ct-icon"><i data-lucide="${c.panelIcon}"></i></div>
+        <div class="ct-name">${c.name}</div>
+        <div class="ct-label">${c.label}</div>
+      </div>
+      <div class="ct-active-badge">activa</div>
+    </div>`
+  ).join('');
+  lucide.createIcons({nodes:[cardsGrid]});
+}
+
+function openCardsPanel()  { closeModal(); cardsOverlay.classList.add('open'); }
+function closeCardsPanel() { cardsOverlay.classList.remove('open'); }
+
+document.getElementById('btnCards').addEventListener('click', openCardsPanel);
+document.getElementById('cardsClose').addEventListener('click', closeCardsPanel);
+cardsOverlay.addEventListener('click', e => { if(e.target===cardsOverlay) closeCardsPanel(); });
+
+cardsGrid.addEventListener('click', e => {
+  const thumb = e.target.closest('.card-thumb[data-card-id]');
+  if (!thumb) return;
+  const card = ALL_CARDS.find(c => c.id === thumb.dataset.cardId);
+  if (card && card.id !== activeCard?.id) {
+    closeCardsPanel();
+    setTimeout(() => renderCard(card), 180);
+  } else {
+    closeCardsPanel();
+  }
+});
+
+// ── THEME ─────────────────────────────────────────────────────────────────
+const togBtn  = document.getElementById('themeToggle');
+const togIcon = document.getElementById('togIcon');
+function applyTheme(light, anim){
+  document.body.classList.toggle('light', light);
+  togIcon.innerHTML = light ? '<i data-lucide="moon"></i>' : '<i data-lucide="sun"></i>';
+  lucide.createIcons({nodes:[togIcon]});
+  if (activeCard) applyBannerVars(activeCard, light);
+  if (anim){ togBtn.classList.remove('pop','spin'); void togBtn.offsetWidth; togBtn.classList.add('pop','spin'); togBtn.addEventListener('animationend',()=>togBtn.classList.remove('pop','spin'),{once:true}); }
+  localStorage.setItem('wc-light', light ? '1' : '0');
+}
+togBtn.addEventListener('click', () => applyTheme(!document.body.classList.contains('light'), true));
+
+// ── FULLSCREEN ─────────────────────────────────────────────────────────────
 function toggleFS(){
   if(!document.fullscreenElement)
     (document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen||function(){}).call(document.documentElement);
@@ -846,7 +635,9 @@ function toggleFS(){
 document.getElementById('btnFs').addEventListener('click',toggleFS);
 document.getElementById('btnFullscreen').addEventListener('click',toggleFS);
 
-// ── INIT ICONS ───────────────────────────────────────────────────────────────
+// ── BOOT ──────────────────────────────────────────────────────────────────
+applyTheme(localStorage.getItem('wc-light') === '1', false);
+renderCard(H2O, true);
 lucide.createIcons();
 </script>
 </body>
